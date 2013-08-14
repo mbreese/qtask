@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+'''
+Management script for tracking the status of jobs
+
+Sends job results to a particular monitoring database/file. Supported types are:
+text file, sqlite database, or an external webapp (URL)
+'''
+
+import sys
+
+def usage():
+	print __doc__
+	print """Usage: qtask-mon monitor-uri jobid [submit|start|stop|stdout|stderr] {values}
+
+Monitor URIs:
+
+	file://filename.txt
+	sqlite://sqlite.db
+	http://hostname/qtask-mon
+
+Values for "submit":
+	job_name
+
+Values for "start":
+	hostname
+
+Values for "stop":
+	return_code
+
+Values for "stdout" or "stderr":
+	filename
+
+"""
+	sys.exit(1)
+
+if __name__ == '__main__':
+	usage()
