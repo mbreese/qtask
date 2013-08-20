@@ -78,6 +78,11 @@ class SGE(qtask.JobRunner):
                 else:
                     src += 'rm "$TMPDIR/$JOB_ID.qtask.stderr"\n'
                 src += "exit $RETVAL"
+        else:
+            # for tasks w/o cmds we won't track stderr/stdout
+            src += '#$ -o /dev/null\n'
+            src += '#$ -e /dev/null\n'
+
 
         if self.verbose:
             print '-[%s]---------------' % task.name
