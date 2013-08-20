@@ -8,53 +8,53 @@ import qtask
 from qtask import task
 
 def example(infile):
-	qtask.pipeline.runner.verbose = True
-	qtask.pipeline.monitor = "sqlite://foo.db"
-	qtask.pipeline.project = 'World domination'
-	qtask.pipeline.sample = infile
+    qtask.pipeline.runner.verbose = True
+    qtask.pipeline.monitor = "sqlite://foo.db"
+    qtask.pipeline.project = 'World domination'
+    qtask.pipeline.sample = infile
 
-	hold = holding()
+    hold = holding()
 
-	t1 = task1('foo').deps(hold)
-	t2 = task2('bar').deps(t1).set_name("quux2")
+    t1 = task1('foo').deps(hold)
+    t2 = task2('bar').deps(t1).set_name("quux2")
 
-	for arg in 'abcd':
-		qtask.pipeline.basename = arg
-		t3 = task3(arg).deps(t2)
-		task4('baz').deps(t3)
+    for arg in 'abcd':
+        qtask.pipeline.basename = arg
+        t3 = task3(arg).deps(t2)
+        task4('baz').deps(t3)
 
-	qtask.pipeline.submit()
-	hold.release()
+    qtask.pipeline.submit()
+    hold.release()
 
 
 @task(holding=True, walltime='00:00:10')
 def holding():
-	return ''
+    return ''
 
 @task()
 def task1(infile):
-	cmd = 'echo "%s"' % infile
-	return cmd
+    cmd = 'echo "%s"' % infile
+    return cmd
 
 @task()
 def task2(outfile):
-	cmd = '''
+    cmd = '''
 # longer command/bash script
 echo "%s"
 datetime
 hostname
 ''' % outfile
 
-	return cmd
+    return cmd
 
 @task()
 def task3(arg):
-	cmd = 'echo "%s, %s"' % (arg, arg)
-	return cmd
+    cmd = 'echo "%s, %s"' % (arg, arg)
+    return cmd
 
 @task()
 def task4(arg):
-	return str(arg)
+    return str(arg)
 
 if __name__ == '__main__':
-	example('filename.fastq')
+    example('filename.fastq')

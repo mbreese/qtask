@@ -7,14 +7,14 @@ import os
 import re
 
 if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'qtask')):
-	sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import qtask
 
 
 def usage():
-	print __doc__
-	print '''Usage: mqsub {job-args} commands... -- input_files
+    print __doc__
+    print '''Usage: mqsub {job-args} commands... -- input_files
 
 One command is submitted to the job scheduler for each input file. If
 "{}" appears in a command argument (or job argument), it will be replaced
@@ -26,16 +26,16 @@ path name. Similarly, {%^.txt} would use the basename and replace '.txt' in
 the filename.
 
 Example:
-	mqsub -walltime 2:00:00 -ppn 4 process_file.sh {} \\> {^.txt}.processed.txt -- *.txt
+    mqsub -walltime 2:00:00 -ppn 4 process_file.sh {} \\> {^.txt}.processed.txt -- *.txt
 
-	For files "input1.txt" and "input2.txt" this would run:
-	$ process_file.sh input1.txt > input1.processed.txt
-	$ process_file.sh input2.txt > input2.processed.txt
+    For files "input1.txt" and "input2.txt" this would run:
+    $ process_file.sh input1.txt > input1.processed.txt
+    $ process_file.sh input2.txt > input2.processed.txt
 
 '''
-	print qtask.QTask.__doc__
+    print qtask.QTask.__doc__
 
-	print '''\
+    print '''\
 Other job arguments:
   -v        Verbose output (writes the submitted scripts to stdout)
   -dr       Dry-run - don't actually submit jobs, just generate the scripts
@@ -45,119 +45,119 @@ Monitoring arguments:
   -project name   Project to associate with these tasks
   -sample  name   Sample name to associate with these tasks (can be {} form)
 
-	'''
-	sys.exit(1)
+    '''
+    sys.exit(1)
 
 def _var_repl(arg, fname):
-	m = re.match('^(.*){(.*)}(.*)$', arg)
-	if m:
-		if m.group(2):
-			middle = m.group(2)
-			if middle[0] == '%':
-				fname = os.path.basename(fname)
-				middle = middle[1:]
-			if middle and middle[0] == '^':
-				repl = fname[:fname.rfind(middle[1:])]
-				return '%s%s%s' % (m.group(1), repl, m.group(3))
-		return '%s%s%s' % (m.group(1), fname, m.group(3))
-	else:
-		return arg
+    m = re.match('^(.*){(.*)}(.*)$', arg)
+    if m:
+        if m.group(2):
+            middle = m.group(2)
+            if middle[0] == '%':
+                fname = os.path.basename(fname)
+                middle = middle[1:]
+            if middle and middle[0] == '^':
+                repl = fname[:fname.rfind(middle[1:])]
+                return '%s%s%s' % (m.group(1), repl, m.group(3))
+        return '%s%s%s' % (m.group(1), fname, m.group(3))
+    else:
+        return arg
 
 
 
 def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
-	qtask.pipeline.runner.verbose = verbose
-	qtask.pipeline.runner.dryrun = dryrun
+    qtask.pipeline.runner.verbose = verbose
+    qtask.pipeline.runner.dryrun = dryrun
 
-	if 'monitor' in resources:
-		qtask.pipeline.monitor = resources['monitor']
-		if 'project' in resources:
-			qtask.pipeline.project = resources['project']
+    if 'monitor' in resources:
+        qtask.pipeline.monitor = resources['monitor']
+        if 'project' in resources:
+            qtask.pipeline.project = resources['project']
 
-	if not infiles:
-		if 'jobname' in resources:
-			jobname = resources['jobname']
-		else:
-			jobname = '%s' % (cmd_ar[0])
+    if not infiles:
+        if 'jobname' in resources:
+            jobname = resources['jobname']
+        else:
+            jobname = '%s' % (cmd_ar[0])
 
-		task = qtask.QTask(' '.join(cmd_ar), jobname, resources)
-		qtask.pipeline.add_task(task)
+        task = qtask.QTask(' '.join(cmd_ar), jobname, resources)
+        qtask.pipeline.add_task(task)
 
-	else:
-		for fname in infiles:
-			cmd_repl = []
-			job_resources = {}
+    else:
+        for fname in infiles:
+            cmd_repl = []
+            job_resources = {}
 
-			for c in cmd_ar:
-				cmd_repl.append(_var_repl(c, fname))
+            for c in cmd_ar:
+                cmd_repl.append(_var_repl(c, fname))
 
-			if 'jobname' in resources:
-				jobname = resources['jobname']
-			else:
-				jobname = '%s.%s' % (cmd_ar[0], fname)
+            if 'jobname' in resources:
+                jobname = resources['jobname']
+            else:
+                jobname = '%s.%s' % (cmd_ar[0], fname)
 
-			for k in resources:
-				val = resources[k]
-				if type(val) == str:
-					job_resources[k] = _var_repl(val, fname)
-				else:
-					job_resources[k] = val
+            for k in resources:
+                val = resources[k]
+                if type(val) == str:
+                    job_resources[k] = _var_repl(val, fname)
+                else:
+                    job_resources[k] = val
 
 
-			task = qtask.QTask(' '.join(cmd_repl), jobname, job_resources)
+            task = qtask.QTask(' '.join(cmd_repl), jobname, job_resources)
 
-			if qtask.pipeline.monitor and 'sample' in resources:
-				qtask.pipeline.sample = _var_repl(resources['sample'], fname)
+            if qtask.pipeline.monitor and 'sample' in resources:
+                qtask.pipeline.sample = _var_repl(resources['sample'], fname)
 
-			qtask.pipeline.add_task(task)
+            qtask.pipeline.add_task(task)
 
-	qtask.pipeline.submit()
+    qtask.pipeline.submit()
 
 
 if __name__ == '__main__':
 
-	in_cmd = False
-	in_files = False
-	in_args = True
+    in_cmd = False
+    in_files = False
+    in_args = True
 
-	resources = {'env': True}
-	cmd_ar = []
-	infiles = []
+    resources = {'env': True}
+    cmd_ar = []
+    infiles = []
 
-	verbose = False
-	dryrun = False
+    verbose = False
+    dryrun = False
 
-	last = None
-	for arg in sys.argv[1:]:
-		if in_args:
-			if last:
-				resources[last[1:]] = arg
-				last = None
-			elif arg == '-v':
-				verbose = True
-			elif arg == '-dr':
-				dryrun = True
-			elif arg in ['-holding', '-env']:
-				resources[arg[1:]] = True
-			elif arg[0] == '-':
-				last = arg
-			else:
-				in_args = False
-				in_cmd = True
-				cmd_ar.append(arg)
+    last = None
+    for arg in sys.argv[1:]:
+        if in_args:
+            if last:
+                resources[last[1:]] = arg
+                last = None
+            elif arg == '-v':
+                verbose = True
+            elif arg == '-dr':
+                dryrun = True
+            elif arg in ['-holding', '-env']:
+                resources[arg[1:]] = True
+            elif arg[0] == '-':
+                last = arg
+            else:
+                in_args = False
+                in_cmd = True
+                cmd_ar.append(arg)
 
-		elif in_cmd:
-			if arg == '--':
-				in_files = True
-				in_cmd = False
-			else:
-				cmd_ar.append(arg)
+        elif in_cmd:
+            if arg == '--':
+                in_files = True
+                in_cmd = False
+            else:
+                cmd_ar.append(arg)
 
-		elif in_files:
-			infiles.append(arg)
+        elif in_files:
+            infiles.append(arg)
 
 
-	if not cmd_ar:
-		usage()
+    if not cmd_ar:
+        usage()
 
-	submit(cmd_ar, infiles, resources, verbose, dryrun)
+    submit(cmd_ar, infiles, resources, verbose, dryrun)
