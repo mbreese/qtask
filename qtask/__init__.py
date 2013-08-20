@@ -207,10 +207,16 @@ class __Pipeline(object):
             basename = self.basejobname
 
         if self.sample:
-            basename = '%s.%s' % (re.sub(r'\s', '_', self.sample), basename)
+            if basename:
+                basename = '%s.%s' % (re.sub(r'\s', '_', self.sample), basename)
+            else:
+                basename = re.sub(r'\s', '_', self.sample)
 
         if self.project:
-            basename = '%s.%s' % (re.sub(r'\s', '_', self.project), basename)
+            if basename:
+                basename = '%s.%s' % (re.sub(r'\s', '_', self.project), basename)
+            else:
+                basename = re.sub(r'\s', '_', self.project)
         
         task.basename = basename
 
