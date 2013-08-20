@@ -2,7 +2,7 @@ import os
 import sys
 import monitor
 
-QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bin", "qtask-mon"))
+QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "bin", "qtask-mon"))
 
 class QTask(object):
     '''\

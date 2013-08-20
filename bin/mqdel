@@ -5,8 +5,8 @@ Utility script to flag multiple jobs for deletion
 
 import sys
 import os
-if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'qtask')):
-    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+if os.path.exists(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'qtask')):
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 
 import qtask
 
