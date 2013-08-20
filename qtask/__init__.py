@@ -1,6 +1,7 @@
 import os
 import sys
 import monitor
+import re
 
 QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "bin", "qtask-mon"))
 
@@ -196,10 +197,10 @@ class __Pipeline(object):
             task.name = '%s.%s' % (self.basejobname, task.name)
 
         if self.sample:
-            task.name = '%s.%s' % (self.sample, task.name)
+            task.name = '%s.%s' % (re.sub(r'\s', '_', self.sample), task.name)
 
         if self.project:
-            task.name = '%s.%s' % (self.project, task.name)
+            task.name = '%s.%s' % (re.sub(r'\s', '_', self.project), task.name)
         
         self.tasks.append(task)
 
