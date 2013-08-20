@@ -71,8 +71,10 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
 
     if 'monitor' in resources:
         qtask.pipeline.monitor = resources['monitor']
-        if 'project' in resources:
-            qtask.pipeline.project = resources['project']
+    if 'project' in resources:
+        qtask.pipeline.project = resources['project']
+    if 'sample' in resources:
+        qtask.pipeline.sample = resources['sample']
 
     if not infiles:
         if 'jobname' in resources:
@@ -106,7 +108,7 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
 
             task = qtask.QTask(' '.join(cmd_repl), jobname, job_resources)
 
-            if qtask.pipeline.monitor and 'sample' in resources:
+            if 'sample' in resources:
                 qtask.pipeline.sample = _var_repl(resources['sample'], fname)
 
             qtask.pipeline.add_task(task)
