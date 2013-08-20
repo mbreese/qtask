@@ -2,7 +2,7 @@ import os
 import sys
 import monitor
 
-QTASK_MON = os.path.join(os.path.dirname(__file__), "..", "bin", "qtask-mon")
+QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bin", "qtask-mon"))
 
 class QTask(object):
     '''\
@@ -24,7 +24,7 @@ Note: These values are all job-scheduler dependent
     def __init__(self, cmd, name=None, resources=None):
         self.name = name
         self.cmd = cmd
-        self.resources = {'env': True, 'wd': os.curdir()}
+        self.resources = {'env': True, 'wd': os.path.abspath(os.curdir)}
         for k in resources:
             self.resources[k] = resources[k]
 
@@ -140,12 +140,7 @@ class BashRunner(JobRunner):
 
 class __Pipeline(object):
     def __init__(self):
-        self.tasks = []
-        self.basename = ''
-        self.project = ''
-        self.sample = ''
-        self._submitted_tasks = set()
-
+        self._reset()
         # default to SGE/OGE as a runner and no job monitor
         self.config = {'runner': 'sge', 'monitor': None}
 
@@ -169,6 +164,14 @@ class __Pipeline(object):
         else:
             raise RuntimeError("Unknown runner: %s (valid: sge, pbs, bash)" % self.config['qtype'])
 
+    def _reset(self):
+        self.tasks = []
+        self.basejobname = ''
+        self.project = ''
+        self.sample = ''
+        self._submitted_tasks = set()
+
+
     @property
     def monitor(self):
         return self.config['monitor']
@@ -184,8 +187,19 @@ class __Pipeline(object):
         sys.stderr.write("Unknown monitor type: %s! Ignoring!\n" % val)
 
     def add_task(self, task):
-        if task.name and self.basename:
-            task.name = '%s.%s' % (self.basename, task.name)
+        # alter the job name to be unique to this job/sample/project
+        #
+        # (it will be possible to filter this prior to submission,
+        #  to avoid re-submitting jobs - not yet implemented #TODO)
+
+        if task.name and self.basejobname:
+            task.name = '%s.%s' % (self.basejobname, task.name)
+
+        if self.sample:
+            task.name = '%s.%s' % (self.sample, task.name)
+
+        if self.project:
+            task.name = '%s.%s' % (self.project, task.name)
         
         self.tasks.append(task)
 
@@ -227,13 +241,11 @@ class __Pipeline(object):
                     self.abort()
                     raise e
         self.runner.done()
-
-        # victoire! reset pipeline
-        self.tasks = []
-        self._submitted_tasks = []
-        self.basename = ''
         if mon:
             mon.close()
+
+        # victoire! reset pipeline
+        self._reset()
 
     def abort(self):
         for t in self._submitted_tasks:

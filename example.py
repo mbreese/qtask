@@ -19,7 +19,7 @@ def example(infile):
     t2 = task2('bar').deps(t1).set_name("quux2")
 
     for arg in 'abcd':
-        qtask.pipeline.basename = arg
+        qtask.pipeline.basejobname = arg
         t3 = task3(arg).deps(t2)
         task4('baz').deps(t3)
 
