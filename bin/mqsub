@@ -20,7 +20,10 @@ One command is submitted to the job scheduler for each input file. If
 "{}" appears in a command argument (or job argument), it will be replaced
 with the current filename. You can also specify suffixes to remove from a 
 filename. For example, "{^.txt}.gz" would remove .txt from the filename, and
-add .gz. So, "filename.txt" would be replaced with "filename.txt".
+add .gz. So, "filename.txt" would be replaced with "filename.txt". If the {}
+arg is "{%}", then the basename of the file is used, as opposed to the full
+path name. Similarly, {%^.txt} would use the basename and replace '.txt' in
+the filename.
 
 Example:
 	mqsub -walltime 2:00:00 -ppn 4 process_file.sh {} \\> {^.txt}.processed.txt -- *.txt
@@ -32,15 +35,44 @@ Example:
 '''
 	print qtask.QTask.__doc__
 
-	print '''Other job arguments:
-  -v    Verbose output (writes the submitted scripts to stdout)
-  -dr   Dry-run - don't actually submit jobs, just generate the scripts
+	print '''\
+Other job arguments:
+  -v        Verbose output (writes the submitted scripts to stdout)
+  -dr       Dry-run - don't actually submit jobs, just generate the scripts
+
+Monitoring arguments:
+  -monitor uri    URI of a job-monitor (sqlite://filename.db)
+  -project name   Project to associate with these tasks
+  -sample  name   Sample name to associate with these tasks (can be {} form)
+
 	'''
 	sys.exit(1)
+
+def _var_repl(arg, fname):
+	m = re.match('^(.*){(.*)}(.*)$', arg)
+	if m:
+		if m.group(2):
+			middle = m.group(2)
+			if middle[0] == '%':
+				fname = os.path.basename(fname)
+				middle = middle[1:]
+			if middle and middle[0] == '^':
+				repl = fname[:fname.rfind(middle[1:])]
+				return '%s%s%s' % (m.group(1), repl, m.group(3))
+		return '%s%s%s' % (m.group(1), fname, m.group(3))
+	else:
+		return arg
+
+
 
 def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
 	qtask.pipeline.runner.verbose = verbose
 	qtask.pipeline.runner.dryrun = dryrun
+
+	if 'monitor' in resources:
+		qtask.pipeline.monitor = resources['monitor']
+		if 'project' in resources:
+			qtask.pipeline.project = resources['project']
 
 	if not infiles:
 		if 'jobname' in resources:
@@ -57,15 +89,7 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
 			job_resources = {}
 
 			for c in cmd_ar:
-				m = re.match('^(.*){(.*)}(.*)$', c)
-				if m:
-					if m.group(2) and m.group(2)[0] == '^':
-						repl = fname[:fname.rfind(m.group(2)[1:])]
-						cmd_repl.append('%s%s%s' % (m.group(1), repl, m.group(3)))
-					else:
-						cmd_repl.append('%s%s%s' % (m.group(1), fname, m.group(3)))
-				else:
-					cmd_repl.append(c)
+				cmd_repl.append(_var_repl(c, fname))
 
 			if 'jobname' in resources:
 				jobname = resources['jobname']
@@ -75,20 +99,16 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
 			for k in resources:
 				val = resources[k]
 				if type(val) == str:
-					m = re.match('^(.*){(.*)}(.*)$', val)
-					if m:
-						if m.group(2) and m.group(2)[0] == '^':
-							repl = fname[:fname.rfind(m.group(2)[1:])]
-							job_resources[k] = '%s%s%s' % (m.group(1), repl, m.group(3))
-						else:
-							job_resources[k] = '%s%s%s' % (m.group(1), fname, m.group(3))
-					else:
-						job_resources[k] = val
+					job_resources[k] = _var_repl(val, fname)
 				else:
 					job_resources[k] = val
 
 
 			task = qtask.QTask(' '.join(cmd_repl), jobname, job_resources)
+
+			if qtask.pipeline.monitor and 'sample' in resources:
+				qtask.pipeline.sample = _var_repl(resources['sample'], fname)
+
 			qtask.pipeline.add_task(task)
 
 	qtask.pipeline.submit()
