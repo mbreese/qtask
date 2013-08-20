@@ -23,7 +23,7 @@ Note: These values are all job-scheduler dependent
 '''
 
     def __init__(self, cmd, name=None, resources=None):
-        self.name = name
+        self._name = name
         self.cmd = cmd
         self.resources = {'env': True, 'wd': os.path.abspath(os.curdir)}
         for k in resources:
@@ -31,6 +31,7 @@ Note: These values are all job-scheduler dependent
 
         self.jobid = None
         self.runner = None
+        self.basename = None
         self.depends = []
 
     def deps(self, *deps):
@@ -40,8 +41,15 @@ Note: These values are all job-scheduler dependent
 
         return self
 
-    def set_name(self, name):
-        self.name = name
+    @property
+    def name(self):
+        if self.basename:
+            return '%s.%s' % (self.basename, self._name)
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = name
         return
 
     def release(self):
@@ -193,15 +201,19 @@ class __Pipeline(object):
         # (it will be possible to filter this prior to submission,
         #  to avoid re-submitting jobs - not yet implemented #TODO)
 
-        if task.name and self.basejobname:
-            task.name = '%s.%s' % (self.basejobname, task.name)
+        basename = ''
+
+        if self.basejobname:
+            basename = self.basejobname
 
         if self.sample:
-            task.name = '%s.%s' % (re.sub(r'\s', '_', self.sample), task.name)
+            basename = '%s.%s' % (re.sub(r'\s', '_', self.sample), basename)
 
         if self.project:
-            task.name = '%s.%s' % (re.sub(r'\s', '_', self.project), task.name)
+            basename = '%s.%s' % (re.sub(r'\s', '_', self.project), basename)
         
+        task.basename = basename
+
         self.tasks.append(task)
 
     def submit(self):
