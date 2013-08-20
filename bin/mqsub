@@ -6,8 +6,8 @@ import sys
 import os
 import re
 
-if os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'qtask')):
-	sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'qtask')):
+	sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import qtask
 

@@ -12,19 +12,22 @@ Valid job resource/arguments:
     holding     should this job be held until released by the user
     mail        [e,a,ea]
     queue       "default"
-    wd          os.path.getcwd()
+    wd          working directory (default to current)
     stdout      stdout file
     stderr      stderr file
     ppn         processors per node (pe shm)
+    env         Use current environment (default: True)
 
-Note: By default the current environment ($PATH) is used for the job, also
-      these values are all job-scheduler dependent
+Note: These values are all job-scheduler dependent
 '''
 
     def __init__(self, cmd, name=None, resources=None):
         self.name = name
         self.cmd = cmd
-        self.resources = resources
+        self.resources = {'env': True, 'wd': os.curdir()}
+        for k in resources:
+            self.resources[k] = resources[k]
+
         self.jobid = None
         self.runner = None
         self.depends = []

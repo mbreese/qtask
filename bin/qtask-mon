@@ -12,8 +12,8 @@ with mqsub, but not with the jobs that you use for a full sequencing pipeline.
 import sys
 import os
 
-if os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'qtask')):
-	sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'qtask')):
+	sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 import qtask.monitor
 

@@ -42,8 +42,6 @@ class SGE(qtask.JobRunner):
 
 		if 'wd' in task.resources:
 			src += '#$ -wd %s\n' % task.resources['wd']
-		else:
-			src += '#$ -wd %s\n' % os.getcwd()
 
 		if task.cmd:
 			if not monitor:
