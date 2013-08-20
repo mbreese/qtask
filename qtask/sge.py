@@ -8,9 +8,8 @@ import qtask
 class SGE(qtask.JobRunner):
     def __init__(self, *args, **kwargs):
         self.dry_run_cur_jobid = 1
-        qtask.JobRunner.__init__(self, *args, **kwargs)
 
-    def qsub(self, task, monitor):
+    def qsub(self, task, monitor, verbose=False, dryrun=False):
         src = '#!/bin/bash\n'
         src += '#$ -w e\n'
         src += '#$ -terse\n'
@@ -84,11 +83,11 @@ class SGE(qtask.JobRunner):
             src += '#$ -e /dev/null\n'
 
 
-        if self.verbose:
+        if verbose:
             print '-[%s]---------------' % task.name
             print src
 
-        if not self.dryrun:
+        if not dryrun:
             proc = subprocess.Popen(["qsub", ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output = proc.communicate(src)[0]
             retval = proc.wait()

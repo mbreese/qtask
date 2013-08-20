@@ -66,9 +66,6 @@ def _var_repl(arg, fname):
 
 
 def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
-    qtask.pipeline.runner.verbose = verbose
-    qtask.pipeline.runner.dryrun = dryrun
-
     if 'monitor' in resources:
         qtask.pipeline.monitor = resources['monitor']
     if 'project' in resources:
@@ -113,7 +110,7 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
 
             qtask.pipeline.add_task(task)
 
-    qtask.pipeline.submit()
+    qtask.pipeline.submit(verbose=verbose, dryrun=dryrun)
 
 
 if __name__ == '__main__':

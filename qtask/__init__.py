@@ -81,11 +81,6 @@ def task(**task_args):
 
 
 class JobRunner(object):
-    def __init__(self, def_options={}, verbose=False, dryrun=False):
-        self.verbose = verbose
-        self.dryrun = dryrun
-        self.def_options = def_options
-
     def done(self):
         pass
 
@@ -95,7 +90,7 @@ class JobRunner(object):
     def qrls(self, jobid):
         raise NotImplementedError
 
-    def qsub(self, task, monitor):
+    def qsub(self, task, monitor, verbose=False, dryrun=False):
         raise NotImplementedError
 
 
@@ -103,9 +98,8 @@ class BashRunner(JobRunner):
     def __init__(self, *args, **kwargs):
         self.script = '#!/bin/bash\n'
         self._jobid = 1
-        JobRunner.__init__(self, *args, **kwargs)
 
-    def qsub(self, task, monitor):
+    def qsub(self, task, monitor, verbose=False, dryrun=False):
         jobid = 'job.%s' % self._jobid
         if monitor:
                 self.script += 'func_%s () {\n%s\nreturn $?\n}\n' % (jobid, task.cmd)
@@ -217,9 +211,9 @@ class __Pipeline(object):
 
         self.tasks.append(task)
 
-    def submit(self):
+    def submit(self, verbose=False, dryrun=False):
         mon = None
-        if self.config['monitor']:
+        if not dryrun and self.config['monitor']:
             mon = monitor.load_monitor(self.config['monitor'])
 
         while len(self._submitted_tasks) != len(self.tasks):
@@ -239,13 +233,13 @@ class __Pipeline(object):
 
                 # submit
                 try:
-                    jobid = self.runner.qsub(t, monitor=self.config['monitor'])
+                    jobid = self.runner.qsub(t, monitor=self.config['monitor'], verbose=verbose, dryrun=dryrun)
                     t.jobid = jobid
                     t.runner = self.runner
                     self._submitted_tasks.add(t)
                     sys.stderr.write('%s %s\n' % (jobid, t.name))
 
-                    if mon:
+                    if mon and not dryrun:
                         mon.submit(jobid, t.name, t.resources['ppn'] if 'ppn' in t.resources else '', t.resources['mem'] if 'mem' in t.resources else '', src=t.cmd, project=self.project, sample=self.sample)
                         # subprocess.call([os.path.join(os.path.dirname(__file__), "..", "bin", "qtask-mon"), self.config['monitor'], "submit", str(jobid), t.name], shell=True)
 
