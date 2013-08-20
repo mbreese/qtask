@@ -14,7 +14,7 @@ class SGE(qtask.JobRunner):
         src = '#!/bin/bash\n'
         src += '#$ -w e\n'
         src += '#$ -terse\n'
-        src += '#$ -N %s\n' % task.name
+        src += '#$ -N %s\n' % task.fullname
 
         if 'holding' in task.resources:
             src += '#$ -h\n'

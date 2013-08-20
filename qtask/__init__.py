@@ -23,7 +23,7 @@ Note: These values are all job-scheduler dependent
 '''
 
     def __init__(self, cmd, name=None, resources=None):
-        self._name = name
+        self.name = name
         self.cmd = cmd
         self.resources = {'env': True, 'wd': os.path.abspath(os.curdir)}
         for k in resources:
@@ -42,15 +42,10 @@ Note: These values are all job-scheduler dependent
         return self
 
     @property
-    def name(self):
+    def fullname(self):
         if self.basename:
-            return '%s.%s' % (self.basename, self._name)
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        self._name = name
-        return
+            return '%s.%s' % (self.basename, self.name)
+        return self.name
 
     def release(self):
         self.runner.qrls(self.jobid)
