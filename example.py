@@ -16,7 +16,8 @@ def example(infile):
     hold = holding()
 
     t1 = task1('foo').deps(hold)
-    t2 = task2('bar').deps(t1).set_name("quux2")
+    t2 = task2('bar').deps(t1)
+    t2.name="quux2"
 
     for arg in 'abcd':
         qtask.pipeline.basejobname = arg
