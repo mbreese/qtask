@@ -7,18 +7,19 @@ import qtask
 
 from qtask import task
 
-def example():
-	# qtask.pipeline.init(qtask.load_runner(verbose=True))
+def example(infile):
 	qtask.pipeline.runner.verbose = True
-	# qtask.pipeline.monitor('jobs.db')  # sqlite database for jobs, bash scripts, codes, start, stop, status, etc...
+	qtask.pipeline.monitor = "sqlite://foo.db"
+	qtask.pipeline.project = 'World domination'
+	qtask.pipeline.sample = infile
 
 	hold = holding()
 
 	t1 = task1('foo').deps(hold)
-	t2 = task2('bar').deps(t1)
+	t2 = task2('bar').deps(t1).set_name("quux2")
 
 	for arg in 'abcd':
-		qtask.pipeline.set_basename(arg)
+		qtask.pipeline.basename = arg
 		t3 = task3(arg).deps(t2)
 		task4('baz').deps(t3)
 
@@ -33,23 +34,27 @@ def holding():
 @task()
 def task1(infile):
 	cmd = 'echo "%s"' % infile
-
 	return cmd
 
 @task()
 def task2(outfile):
-	cmd = 'echo "%s"' % outfile
+	cmd = '''
+# longer command/bash script
+echo "%s"
+datetime
+hostname
+''' % outfile
 
 	return cmd
 
 @task()
-def task3(value):
-	cmd = 'echo "%s, %s"' % (value, value)
+def task3(arg):
+	cmd = 'echo "%s, %s"' % (arg, arg)
 	return cmd
 
 @task()
-def task4(context):
-	return str(context)
+def task4(arg):
+	return str(arg)
 
-
-example()
+if __name__ == '__main__':
+	example('filename.fastq')

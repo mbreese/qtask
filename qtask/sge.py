@@ -4,12 +4,13 @@ import os
 
 import qtask
 
+
 class SGE(qtask.JobRunner):
 	def __init__(self, *args, **kwargs):
 		self.dry_run_cur_jobid = 1
 		qtask.JobRunner.__init__(self, *args, **kwargs)
 
-	def qsub(self, task):
+	def qsub(self, task, monitor):
 		src = '#!/bin/bash\n'
 		src += '#$ -w e\n'
 		src += '#$ -terse\n'
@@ -39,23 +40,46 @@ class SGE(qtask.JobRunner):
 		if 'mail' in task.resources:
 			src += '#$ -m %s\n' % task.resources['mail']
 
-		if 'stdout' in task.resources:
-			src += '#$ -o %s\n' % task.resources['stdout']
-		else:
-			src += '#$ -o /dev/null\n'
-
-		if 'stderr' in task.resources:
-			src += '#$ -e %s\n' % task.resources['stderr']
-		else:
-			src += '#$ -e /dev/null\n'
-
 		if 'wd' in task.resources:
 			src += '#$ -wd %s\n' % task.resources['wd']
 		else:
 			src += '#$ -wd %s\n' % os.getcwd()
 
+		if task.cmd:
+			if not monitor:
+				if 'stdout' in task.resources:
+					src += '#$ -o %s\n' % task.resources['stdout']
+				else:
+					src += '#$ -o /dev/null\n'
 
-		src += '%s\n' % task.cmd 
+				if 'stderr' in task.resources:
+					src += '#$ -e %s\n' % task.resources['stderr']
+				else:
+					src += '#$ -e /dev/null\n'
+
+				src += '%s\n' % task.cmd 
+
+			else:
+				src += '#$ -o /dev/null\n'
+				src += '#$ -e /dev/null\n'
+
+				src += 'func () {\n%s\nreturn $?\n}\n' % task.cmd
+
+				src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
+				src += 'func 2>"$TMPDIR/$JOB_ID.qtask.stderr" >"$TMPDIR/$JOB_ID.qtask.stdout"\n'
+				src += 'RETVAL=$?\n'
+				src += '"%s" "%s" stop $JOB_ID $RETVAL "$TMPDIR/$JOB_ID.qtask.stdout" "$TMPDIR/$JOB_ID.qtask.stderr"\n' % (qtask.QTASK_MON, monitor)
+
+				if 'stdout' in task.resources:
+					src += 'mv "$TMPDIR/$JOB_ID.qtask.stdout" "%s"\n' % task.resources['stdout']
+				else:
+					src += 'rm "$TMPDIR/$JOB_ID.qtask.stdout"\n'
+
+				if 'stderr' in task.resources:
+					src += 'mv "$TMPDIR/$JOB_ID.qtask.stderr" "%s"\n' % task.resources['stderr']
+				else:
+					src += 'rm "$TMPDIR/$JOB_ID.qtask.stderr"\n'
+				src += "exit $RETVAL"
 
 		if self.verbose:
 			print '-[%s]---------------' % task.name

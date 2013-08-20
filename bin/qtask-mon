@@ -3,17 +3,26 @@
 Management script for tracking the status of jobs
 
 Sends job results to a particular monitoring database/file. Supported types are:
-text file, sqlite database, or an external webapp (URL)
+text file, sqlite database, or an external webapp (URL). This is handled outside
+of the pipeline job submission so that each pipeline (or set of jobs) can have
+different monitoring outputs. For example, you may wish to track jobs submitted
+with mqsub, but not with the jobs that you use for a full sequencing pipeline.
 '''
 
 import sys
+import os
+
+if os.path.exists(os.path.join(os.path.dirname(__file__), '..', 'qtask')):
+	sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+import qtask.monitor
+
 
 def usage():
 	print __doc__
-	print """Usage: qtask-mon monitor-uri jobid [submit|start|stop|stdout|stderr] {values}
+	print """Usage: qtask-mon monitor-uri [submit|start|stop|stdout|stderr|view] jobid {values}
 
-Monitor URIs:
-
+Possible monitor URI formats:
 	file://filename.txt
 	sqlite://sqlite.db
 	http://hostname/qtask-mon
@@ -30,8 +39,51 @@ Values for "stop":
 Values for "stdout" or "stderr":
 	filename
 
+Values for "view":
+	None
+
 """
 	sys.exit(1)
 
 if __name__ == '__main__':
-	usage()
+	uri = None
+	cmd = None
+	jobid = None
+	extra = []
+
+	for arg in sys.argv[1:]:
+		if not uri:
+			uri = arg
+		elif not cmd:
+			cmd = arg
+		elif not jobid:
+			jobid = arg
+		else:
+			try:
+				val = int(arg)
+				extra.append(val)
+			except:
+				extra.append(arg)
+
+	if not uri or not cmd or not jobid:
+		usage()
+
+	mon = qtask.monitor.load_monitor(uri)
+	if not mon:
+		sys.stderr.write("Could not open monitor target: %s!\n" % uri)
+		usage()
+
+	if cmd == 'submit':
+		mon.submit(jobid, *extra)
+	elif cmd == 'start':
+		mon.start(jobid, *extra)
+	elif cmd == 'stop':
+		mon.stop(jobid, *extra)
+	elif cmd == 'stdout':
+		mon.stdout(jobid, *extra)
+	elif cmd == 'stderr':
+		mon.stderr(jobid, *extra)
+	elif cmd == 'view':
+		mon.view(jobid, *extra)
+
+	mon.close()
