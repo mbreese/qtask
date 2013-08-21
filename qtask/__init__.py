@@ -13,6 +13,7 @@ Valid job resource/arguments:
     holding     should this job be held until released by the user
     mail        [e,a,ea]
     queue       "default"
+    qos         QOS or SGE project to use
     wd          working directory (default to current)
     stdout      stdout file
     stderr      stderr file

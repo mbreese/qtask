@@ -33,6 +33,9 @@ class SGE(qtask.JobRunner):
         if task.depends:
             src += '#$ -hold_jid %s\n' % ','.join([t.jobid for t in task.depends])
 
+        if 'qos' in task.resources:
+            src += '#$ -P %s\n' % task.resources['qos']
+
         if 'queue' in task.resources:
             src += '#$ -q %s\n' % task.resources['queue']
 
