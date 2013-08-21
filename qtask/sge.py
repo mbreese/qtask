@@ -100,11 +100,11 @@ class SGE(qtask.JobRunner):
                 sys.stderr.write('Error submitting job %s: %s\n' % (task.name, output))
                 raise RuntimeError(output)
             
-            return output.strip()
+            return output.strip(), src
 
         jobid = str(self.dry_run_cur_jobid)
         self.dry_run_cur_jobid += 1
-        return 'dryrun.%s' % jobid
+        return 'dryrun.%s' % jobid, src
 
     def qdel(self, jobid):
         subprocess.call(["qdel", str(jobid)])

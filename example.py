@@ -8,7 +8,6 @@ import qtask
 from qtask import task
 
 def example(infile):
-    qtask.pipeline.runner.verbose = True
     qtask.pipeline.monitor = "sqlite://foo.db"
     qtask.pipeline.project = 'World domination'
     qtask.pipeline.sample = infile
@@ -24,7 +23,7 @@ def example(infile):
         t3 = task3(arg).deps(t2)
         task4('baz').deps(t3)
 
-    qtask.pipeline.submit()
+    qtask.pipeline.submit(verbose=True)
     hold.release()
 
 

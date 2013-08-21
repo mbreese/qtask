@@ -98,6 +98,7 @@ class JobRunner(object):
         raise NotImplementedError
 
     def qsub(self, task, monitor, verbose=False, dryrun=False):
+        'return a tuple: (jobid, script_src)'
         raise NotImplementedError
 
 
@@ -131,7 +132,7 @@ class BashRunner(JobRunner):
             self.script += '%s\n' % task.cmd
 
         self._jobid += 1
-        return jobid
+        return jobid, ''
 
     def qdel(self, jobid):
         pass
@@ -240,14 +241,14 @@ class __Pipeline(object):
 
                 # submit
                 try:
-                    jobid = self.runner.qsub(t, monitor=self.config['monitor'], verbose=verbose, dryrun=dryrun)
+                    jobid, src = self.runner.qsub(t, monitor=self.config['monitor'], verbose=verbose, dryrun=dryrun)
                     t.jobid = jobid
                     t.runner = self.runner
                     self._submitted_tasks.add(t)
                     sys.stderr.write('%s %s\n' % (jobid, t.name))
 
                     if mon and not dryrun:
-                        mon.submit(jobid, t.name, t.resources['ppn'] if 'ppn' in t.resources else '', t.resources['mem'] if 'mem' in t.resources else '', src=t.cmd, project=self.project, sample=self.sample)
+                        mon.submit(jobid, t.name, src=src, project=self.project, sample=self.sample)
                         # subprocess.call([os.path.join(os.path.dirname(__file__), "..", "bin", "qtask-mon"), self.config['monitor'], "submit", str(jobid), t.name], shell=True)
 
                 except RuntimeError, e:
