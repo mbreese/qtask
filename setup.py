@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='qtask',
-      version='0.1.0',
+      version='0.1.1',
       description='Utility library for submitting jobs to a cluster (SGE, PBS, etc)',
       author='Marcus Breese',
       author_email='mbreese@stanford.edu',
