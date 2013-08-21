@@ -23,12 +23,13 @@ Valid job resource/arguments:
 Note: These values are all job-scheduler dependent
 '''
 
-    def __init__(self, cmd, name=None, resources=None):
+    def __init__(self, cmd, name=None, resources=None, skip=False):
         self.name = name
         self.cmd = cmd
         self.resources = {'env': True, 'wd': os.path.abspath(os.curdir)}
         for k in resources:
             self.resources[k] = resources[k]
+        self.skip = skip
 
         self.jobid = None
         self.runner = None
@@ -37,7 +38,7 @@ Note: These values are all job-scheduler dependent
 
     def deps(self, *deps):
         for d in deps:
-            if d:
+            if d and not d.skip:
                 self.depends.append(d)
 
         return self
@@ -70,7 +71,7 @@ def task(**task_args):
                 cmd = ret
 
             if not cmd and not 'holding' in context:
-                return None
+                return QTask('', skip=True)
 
             if 'name' in kwargs:
                 name = kwargs['name']
