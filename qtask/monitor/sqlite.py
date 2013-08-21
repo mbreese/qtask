@@ -10,7 +10,6 @@ import qtask.monitor
 def _now_ts():
     return calendar.timegm(time.gmtime())
 
-
 def _ts_to_datetime(ts):
     return datetime.datetime.fromtimestamp(ts)
 
@@ -29,6 +28,7 @@ CREATE TABLE jobs (
     project TEXT,
     sample TEXT,
     name TEXT,
+    deps TEXT,
     hostname TEXT,
     retcode INTEGER,
     submit INTEGER,
@@ -56,8 +56,8 @@ CREATE TABLE jobs (
         self.conn.execute(sql, args)
         self.conn.commit()
 
-    def submit(self, jobid, jobname, src, project=None, sample=None):
-        self.execute('INSERT INTO jobs (jobid, project, sample, name, submit, src) VALUES (?, ?, ?, ?, ?, ?)', (jobid, project, sample, jobname, _now_ts(), src))
+    def submit(self, jobid, jobname, src, deps=[], project=None, sample=None):
+        self.execute('INSERT INTO jobs (jobid, project, sample, name, deps, submit, src) VALUES (?, ?, ?, ?, ?, ?, ?)', (jobid, project, sample, jobname, ','.join(deps), _now_ts(), src))
 
     def start(self, jobid, hostname=None):
         self.execute('UPDATE jobs SET hostname = ?, start = ? WHERE jobid = ?', (hostname, _now_ts(), jobid))

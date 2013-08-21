@@ -248,7 +248,7 @@ class __Pipeline(object):
                     sys.stderr.write('%s %s\n' % (jobid, t.name))
 
                     if mon and not dryrun:
-                        mon.submit(jobid, t.name, src=src, project=self.project, sample=self.sample)
+                        mon.submit(jobid, t.name, src=src, project=self.project, sample=self.sample, deps=t.depends)
                         # subprocess.call([os.path.join(os.path.dirname(__file__), "..", "bin", "qtask-mon"), self.config['monitor'], "submit", str(jobid), t.name], shell=True)
 
                 except RuntimeError, e:
