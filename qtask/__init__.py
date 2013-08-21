@@ -26,10 +26,11 @@ Note: These values are all job-scheduler dependent
     def __init__(self, cmd, name=None, resources=None, skip=False):
         self.name = name
         self.cmd = cmd
-        self.resources = {'env': True, 'wd': os.path.abspath(os.curdir)}
-        for k in resources:
-            self.resources[k] = resources[k]
         self.skip = skip
+        self.resources = {'env': True, 'wd': os.path.abspath(os.curdir)}
+        if resources:
+            for k in resources:
+                self.resources[k] = resources[k]
 
         self.jobid = None
         self.runner = None
