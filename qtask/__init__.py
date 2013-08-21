@@ -42,6 +42,10 @@ Note: These values are all job-scheduler dependent
 
         return self
 
+    def set_name(self, name):
+        self.name = name
+        return self
+
     @property
     def fullname(self):
         if self.basename:
