@@ -45,8 +45,8 @@ class SGE(qtask.JobRunner):
         if 'wd' in task.resources:
             src += '#$ -wd %s\n' % task.resources['wd']
 
-        if task.cmd:
-            if not monitor:
+        if not monitor:
+            if task.cmd:
                 if 'stdout' in task.resources:
                     src += '#$ -o %s\n' % task.resources['stdout']
                 else:
@@ -57,19 +57,22 @@ class SGE(qtask.JobRunner):
                 else:
                     src += '#$ -e /dev/null\n'
 
-                src += '%s\n' % task.cmd 
-
+                src += '%s\n' % task.cmd
             else:
                 src += '#$ -o /dev/null\n'
                 src += '#$ -e /dev/null\n'
+                
 
+        else:
+            src += '#$ -o /dev/null\n'
+            src += '#$ -e /dev/null\n'
+
+            if task.cmd:
                 src += 'func () {\n%s\nreturn $?\n}\n' % task.cmd
-
                 src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
                 src += 'func 2>"$TMPDIR/$JOB_ID.qtask.stderr" >"$TMPDIR/$JOB_ID.qtask.stdout"\n'
                 src += 'RETVAL=$?\n'
                 src += '"%s" "%s" stop $JOB_ID $RETVAL "$TMPDIR/$JOB_ID.qtask.stdout" "$TMPDIR/$JOB_ID.qtask.stderr"\n' % (qtask.QTASK_MON, monitor)
-
                 if 'stdout' in task.resources:
                     src += 'mv "$TMPDIR/$JOB_ID.qtask.stdout" "%s"\n' % task.resources['stdout']
                 else:
@@ -80,11 +83,9 @@ class SGE(qtask.JobRunner):
                 else:
                     src += 'rm "$TMPDIR/$JOB_ID.qtask.stderr"\n'
                 src += "exit $RETVAL"
-        else:
-            # for tasks w/o cmds we won't track stderr/stdout
-            src += '#$ -o /dev/null\n'
-            src += '#$ -e /dev/null\n'
-
+            else:
+                src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
+                src += '"%s" "%s" stop $JOB_ID 0\n' % (qtask.QTASK_MON, monitor)
 
         if verbose:
             print '-[%s]---------------' % task.name
