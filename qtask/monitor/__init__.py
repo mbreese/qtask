@@ -42,7 +42,7 @@ class Lock(object):
 class Monitor(object):
     def __init__(self):
         pass
-    def submit(self, jobid, jobname, procs=1, project=None):
+    def submit(self, jobid, jobname, procs=1, deps=[], project=None):
         raise NotImplementedError
     def start(self, jobid, hostname=None):
         raise NotImplementedError
