@@ -58,7 +58,7 @@ CREATE TABLE jobs (
         self.conn.commit()
 
     def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None):
-        self.execute('INSERT INTO jobs (jobid, project, sample, name, procs, deps, submit, src) VALUES (?, ?, ?, ?, ?, ?, ?)', (jobid, project, sample, jobname, procs, ','.join(deps), _now_ts(), src))
+        self.execute('INSERT INTO jobs (jobid, project, sample, name, procs, deps, submit, src) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (jobid, project, sample, jobname, procs, ','.join(deps), _now_ts(), src))
 
     def start(self, jobid, hostname=None):
         self.execute('UPDATE jobs SET hostname = ?, start = ? WHERE jobid = ?', (hostname, _now_ts(), jobid))
