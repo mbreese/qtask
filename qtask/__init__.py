@@ -116,8 +116,6 @@ def check_path(prog):
     return True
 
 
-
-
 class JobRunner(object):
     def done(self):
         pass
