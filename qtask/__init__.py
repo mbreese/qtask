@@ -28,7 +28,7 @@ Note: These values are all job-scheduler dependent
         self.name = name
         self.cmd = cmd
         self.skip = skip
-        self.resources = {'env': True, 'wd': os.path.abspath(os.curdir)}
+        self.resources = {'env': True, 'wd': os.path.abspath(os.curdir), 'force_first': False}
         if resources:
             for k in resources:
                 self.resources[k] = resources[k]
@@ -37,6 +37,9 @@ Note: These values are all job-scheduler dependent
         self.runner = None
         self.basename = None
         self.depends = []
+
+    def __nonzero__(self):
+        return not self.skip
 
     def deps(self, *deps):
         for d in deps:
@@ -90,6 +93,10 @@ def task(**task_args):
 
             task = QTask(cmd, name, context)
 
+            if not cmd and not 'holding' in context:
+                task = QTask('', name, skip=True)
+            else:
+                task = QTask(cmd, name, context)
             pipeline.add_task(task)
             return task
         return wrapped_func
@@ -168,6 +175,11 @@ class BashRunner(JobRunner):
         print self.script
 
 
+@task(holding=True, force_first=True)
+def holding():
+    return ''
+
+
 class __Pipeline(object):
     def __init__(self):
         self._reset()
@@ -200,6 +212,7 @@ class __Pipeline(object):
         self.project = ''
         self.sample = ''
         self._submitted_tasks = set()
+        self.global_depends = []
 
 
     @property
@@ -240,18 +253,25 @@ class __Pipeline(object):
                 basename = re.sub(r'\s', '_', self.project)
         
         task.basename = basename
+        task.deps(*self.global_depends)
 
-        self.tasks.append(task)
+        if task.resources['force_first']:
+            self.tasks.insert(0, task)
+        else:
+            self.tasks.append(task)
+
 
     def submit(self, verbose=False, dryrun=False):
         mon = None
         if not dryrun and self.config['monitor']:
             mon = monitor.load_monitor(self.config['monitor'])
 
-        while len(self._submitted_tasks) != len(self.tasks):
+        while self.tasks:
             for t in self.tasks:
-                # skip if we've already submitted it
-                if t.jobid:
+                # is this an already processed job (flagged to skip)
+                if t.skip:
+                    sys.stderr.write(' - skipped %s\n' % t.name)
+                    self._submitted_tasks.add(t)
                     continue
 
                 # check to see if dependencies have been submitted
@@ -269,10 +289,10 @@ class __Pipeline(object):
                     t.jobid = jobid
                     t.runner = self.runner
                     self._submitted_tasks.add(t)
-                    sys.stderr.write('%s %s\n' % (jobid, t.name))
+                    sys.stderr.write('%s %s (%s)\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends])))
 
                     if mon and not dryrun:
-                        mon.submit(jobid, t.name, src=src, project=self.project, sample=self.sample, deps=t.depends)
+                        mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample)
                         # subprocess.call([os.path.join(os.path.dirname(__file__), "..", "bin", "qtask-mon"), self.config['monitor'], "submit", str(jobid), t.name], shell=True)
 
                 except RuntimeError, e:
@@ -280,16 +300,23 @@ class __Pipeline(object):
                     # there was a problem...
                     self.abort()
                     raise e
+            
+            remaining = []
+            for t in self.tasks:
+                if t not in self._submitted_tasks:
+                    remaining.append(t)
+            self.tasks = remaining
         self.runner.done()
         if mon:
             mon.close()
 
-        # victoire! reset pipeline
+        # victoire! reset pipeline and release the hounds!
         self._reset()
 
     def abort(self):
         for t in self._submitted_tasks:
-            self.runner.qdel(t.jobid)
+            if not t.skip:
+                self.runner.qdel(t.jobid)
 
 
 pipeline = __Pipeline()
