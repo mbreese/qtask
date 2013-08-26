@@ -1,7 +1,8 @@
 import os
 import sys
-import monitor
+import qtask.monitor as monitor
 import re
+import subprocess
 
 QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "bin", "qtask-mon"))
 
@@ -71,6 +72,13 @@ def task(**task_args):
             else:
                 cmd = ret
 
+            if 'progs' in context:
+                if type(context['progs']) == type(''):
+                    check_path(context['progs'])
+                else:
+                    for prog in context['progs']:
+                        check_path(prog)
+
             if not cmd and not 'holding' in context:
                 return QTask('', skip=True)
 
@@ -81,10 +89,26 @@ def task(**task_args):
                 name = func.__name__
 
             task = QTask(cmd, name, context)
+
             pipeline.add_task(task)
             return task
         return wrapped_func
     return wrap
+
+
+__path_cache = set()
+def check_path(prog):
+    if prog in __path_cache:
+        return True
+
+    with open('/dev/null', 'w') as devnull:
+        if subprocess.call("which %s" % prog, stderr=devnull, stdout=devnull, shell=True) != 0:
+            raise RuntimeError("Missing required program from $PATH: %s\n\n" % prog)
+
+    __path_cache.add(prog)
+    return True
+
+
 
 
 class JobRunner(object):
