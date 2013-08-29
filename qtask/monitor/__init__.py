@@ -4,10 +4,10 @@ import time
 
 def load_monitor(uri):
     if uri[:7] == 'file://':
-        return TextMonitor(uri[7:])
+        return TextMonitor(os.path.realpath(os.path.expanduser(uri[7:])))
     elif uri[:9] == 'sqlite://':
         import sqlite
-        return sqlite.SqliteMonitor(uri[9:])
+        return sqlite.SqliteMonitor(os.path.realpath(os.path.expanduser(uri[9:])))
     return None
 
 class LockAcquireError(Exception):
