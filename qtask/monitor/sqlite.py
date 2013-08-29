@@ -37,7 +37,8 @@ CREATE TABLE jobs (
     src BLOB,
     stdout BLOB,
     stderr BLOB
-);
+);''')
+            conn.execute('''
 CREATE TABLE job_deps (
     jobid TEXT,
     parentid TEXT
