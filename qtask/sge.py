@@ -1,13 +1,13 @@
 import subprocess
 import sys
-import os
 
 import qtask
 
 
 class SGE(qtask.JobRunner):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parallelenv='shm', *args, **kwargs):
         self.dry_run_cur_jobid = 1
+        self.parallelenv = parallelenv
 
     def qsub(self, task, monitor, verbose=False, dryrun=False):
         src = '#!/bin/bash\n'
@@ -28,7 +28,7 @@ class SGE(qtask.JobRunner):
             src += '#$ -l h_vmem=%s\n' % task.resources['mem']
 
         if 'ppn' in task.resources:
-            src += '#$ -pe shm %s\n' % task.resources['ppn']
+            src += '#$ -pe %s %s\n' % (self.parallelenv, task.resources['ppn'])
 
         if task.depends:
             src += '#$ -hold_jid %s\n' % ','.join([t.jobid for t in task.depends])
@@ -46,22 +46,14 @@ class SGE(qtask.JobRunner):
             src += '#$ -wd %s\n' % task.resources['wd']
 
         if not monitor:
+            if 'stdout' in task.resources:
+                src += '#$ -o %s\n' % task.resources['stdout']
+
+            if 'stderr' in task.resources:
+                src += '#$ -e %s\n' % task.resources['stderr']
+
             if task.cmd:
-                if 'stdout' in task.resources:
-                    src += '#$ -o %s\n' % task.resources['stdout']
-                else:
-                    src += '#$ -o /dev/null\n'
-
-                if 'stderr' in task.resources:
-                    src += '#$ -e %s\n' % task.resources['stderr']
-                else:
-                    src += '#$ -e /dev/null\n'
-
                 src += '%s\n' % task.cmd
-            else:
-                src += '#$ -o /dev/null\n'
-                src += '#$ -e /dev/null\n'
-                
 
         else:
             src += '#$ -o /dev/null\n'
