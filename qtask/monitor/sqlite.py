@@ -29,7 +29,6 @@ CREATE TABLE jobs (
     sample TEXT,
     name TEXT,
     procs INTEGER,
-    deps TEXT,
     hostname TEXT,
     retcode INTEGER,
     submit INTEGER,
@@ -38,7 +37,12 @@ CREATE TABLE jobs (
     src BLOB,
     stdout BLOB,
     stderr BLOB
-);''')
+);
+CREATE TABLE job_deps (
+    jobid TEXT,
+    parentid TEXT
+);
+''')
             conn.commit()
             conn.close()
 
@@ -58,7 +62,9 @@ CREATE TABLE jobs (
         self.conn.commit()
 
     def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None):
-        self.execute('INSERT INTO jobs (jobid, project, sample, name, procs, deps, submit, src) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (jobid, project, sample, jobname, procs, ','.join(deps), _now_ts(), src))
+        self.execute('INSERT INTO jobs (jobid, project, sample, name, procs, submit, src) VALUES (?, ?, ?, ?, ?, ?, ?)', (jobid, project, sample, jobname, procs, _now_ts(), src))
+        for d in deps:
+            self.execute('INSERT INTO job_deps (jobid, parentid) VALUES (?,?)', (jobid, d))
 
     def start(self, jobid, hostname=None):
         self.execute('UPDATE jobs SET hostname = ?, start = ? WHERE jobid = ?', (hostname, _now_ts(), jobid))
