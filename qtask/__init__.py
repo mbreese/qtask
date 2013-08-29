@@ -4,7 +4,8 @@ import qtask.monitor as monitor
 import re
 import subprocess
 
-QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "bin", "qtask-mon"))
+# QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "bin", "qtask-mon"))
+QTASK_MON = "qtask-mon"  # rely on the $PATH
 
 class QTask(object):
     '''\
@@ -75,11 +76,11 @@ def task(**task_args):
             else:
                 cmd = ret
 
-            if 'progs' in context:
-                if type(context['progs']) == type(''):
-                    check_path(context['progs'])
+            if 'requires' in context:
+                if type(context['requires']) == type(''):
+                    check_path(context['requires'])
                 else:
-                    for prog in context['progs']:
+                    for prog in context['requires']:
                         check_path(prog)
 
             if not cmd and not 'holding' in context:
@@ -173,7 +174,7 @@ class BashRunner(JobRunner):
         print self.script
 
 
-@task(holding=True, force_first=True)
+@task(holding=True, force_first=True, walltime="00:00:10")
 def holding():
     return ''
 
@@ -184,10 +185,14 @@ class __Pipeline(object):
         # default to SGE/OGE as a runner and no job monitor
         self.config = {'runner': 'sge', 'monitor': None}
 
+        runnerconf = {}
+
         if os.path.exists(os.path.expanduser('~/.qtaskrc')):
             with open(os.path.expanduser('~/.qtaskrc')) as f:
                 for line in f:
                     k,v = line.strip().split('=')
+                    if k[:7].lower() == 'runner.':
+                        runnerconf[k[7:].lower()] = v
                     self.config[k.lower()] = v
 
         if 'QTASK_RUNNER' in os.environ:
@@ -195,12 +200,12 @@ class __Pipeline(object):
 
         if self.config['runner'] == 'sge':
             from sge import SGE
-            self.runner = SGE()
+            self.runner = SGE(**runnerconf)
         elif self.config['runner'] == 'pbs':
             from pbs import PBS
-            self.runner = PBS()
+            self.runner = PBS(**runnerconf)
         elif self.config['runner'] == 'bash':
-            self.runner = BashRunner()
+            self.runner = BashRunner(**runnerconf)
         else:
             raise RuntimeError("Unknown runner: %s (valid: sge, pbs, bash)" % self.config['qtype'])
 
@@ -263,6 +268,7 @@ class __Pipeline(object):
         mon = None
         if not dryrun and self.config['monitor']:
             mon = monitor.load_monitor(self.config['monitor'])
+            check_path(QTASK_MON)
 
         while self.tasks:
             for t in self.tasks:
