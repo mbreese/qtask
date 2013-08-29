@@ -270,25 +270,25 @@ class __Pipeline(object):
             mon = monitor.load_monitor(self.config['monitor'])
             check_path(QTASK_MON)
 
-        while self.tasks:
-            for t in self.tasks:
-                # is this an already processed job (flagged to skip)
-                if t.skip:
-                    sys.stderr.write(' - skipped %s\n' % t.name)
-                    self._submitted_tasks.add(t)
-                    continue
+        try:
+            while self.tasks:
+                for t in self.tasks:
+                    # is this an already processed job (flagged to skip)
+                    if t.skip:
+                        sys.stderr.write(' - skipped %s\n' % t.name)
+                        self._submitted_tasks.add(t)
+                        continue
 
-                # check to see if dependencies have been submitted
-                clear = True
-                for d in t.depends:
-                    if d and d not in self._submitted_tasks:
-                        clear = False
-                        break
-                if not clear:
-                    continue
+                    # check to see if dependencies have been submitted
+                    clear = True
+                    for d in t.depends:
+                        if d and d not in self._submitted_tasks:
+                            clear = False
+                            break
+                    if not clear:
+                        continue
 
-                # submit
-                try:
+                    # submit
                     jobid, src = self.runner.qsub(t, monitor=self.config['monitor'], verbose=verbose, dryrun=dryrun)
                     t.jobid = jobid
                     t.runner = self.runner
@@ -298,24 +298,24 @@ class __Pipeline(object):
                     if mon and not dryrun:
                         mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample)
                         # subprocess.call([os.path.join(os.path.dirname(__file__), "..", "bin", "qtask-mon"), self.config['monitor'], "submit", str(jobid), t.name], shell=True)
+                
+                remaining = []
+                for t in self.tasks:
+                    if t not in self._submitted_tasks:
+                        remaining.append(t)
+                self.tasks = remaining
+            self.runner.done()
+            if mon:
+                mon.close()
 
-                except RuntimeError, e:
-                    print e
-                    # there was a problem...
-                    self.abort()
-                    raise e
-            
-            remaining = []
-            for t in self.tasks:
-                if t not in self._submitted_tasks:
-                    remaining.append(t)
-            self.tasks = remaining
-        self.runner.done()
-        if mon:
-            mon.close()
+            # victoire! reset pipeline and release the hounds!
+            self._reset()
 
-        # victoire! reset pipeline and release the hounds!
-        self._reset()
+        except Exception, e:
+            print e
+            # there was a problem...
+            self.abort()
+            raise e
 
     def abort(self):
         for t in self._submitted_tasks:
