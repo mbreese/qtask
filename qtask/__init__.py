@@ -230,7 +230,7 @@ class __Pipeline(object):
                 self.config['monitor'] = val
                 return
 
-        sys.stderr.write("Unknown monitor type: %s! Ignoring!\n" % val)
+        raise RuntimeError("Unknown monitor type: %s!" % val)
 
     def add_task(self, task):
         # alter the job name to be unique to this job/sample/project

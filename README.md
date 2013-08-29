@@ -6,8 +6,13 @@ This is a set of utilities for submitting jobs to a job scheduler (PBS or SGE) o
 Examples:
 
 	mqsub -walltime '2:00:00' filter.sh '{}' -- files*.fastq.gz
-
 	mypipeline.py -name 'foo' infile ref.fa rrna.fa
 
 
+You can configure which job scheduler you use by creating a file named $HOME/.qtaskrc. Here is an example file:
+
+	runner = sge
+	runner.parallelenv = shm
+	runner.time_multiplier = 2.0
+	monitor = sqlite://~/qtask-jobs.db
 

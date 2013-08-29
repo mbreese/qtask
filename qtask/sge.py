@@ -5,9 +5,38 @@ import qtask
 
 
 class SGE(qtask.JobRunner):
-    def __init__(self, parallelenv='shm', *args, **kwargs):
+    def __init__(self, parallelenv='shm', time_multiplier=1.0, *args, **kwargs):
         self.dry_run_cur_jobid = 1
         self.parallelenv = parallelenv
+        self.time_multiplier = float(time_multiplier)
+
+    def _calc_time(self, val):
+        seconds = 0
+        if ':' in val:
+            cols = [int(x) for x in val.split(':')]
+            if len(cols) == 3:
+                h = cols[0]
+                m = cols[1]
+                s = cols[2]
+            elif len(cols) == 2:
+                h = 0
+                m = cols[0]
+                s = cols[1]
+
+            seconds = s + (m * 60) + (h * 60 * 60)
+        else:
+            seconds = int(val)
+
+        seconds = seconds * self.time_multiplier
+
+        h = seconds / (60 * 60)
+        seconds = seconds % (60 * 60)
+
+        m = seconds / 60
+        s = seconds % 60
+
+        return '%d:%02d:%02d' % (h, m, s)
+
 
     def qsub(self, task, monitor, verbose=False, dryrun=False):
         src = '#!/bin/bash\n'
@@ -22,7 +51,7 @@ class SGE(qtask.JobRunner):
             src += '#$ -V\n'
 
         if 'walltime' in task.resources:
-            src += '#$ -l h_rt=%s\n' % task.resources['walltime']
+            src += '#$ -l h_rt=%s\n' % self._calc_time(task.resources['walltime'])
 
         if 'mem' in task.resources:
             src += '#$ -l h_vmem=%s\n' % task.resources['mem']
