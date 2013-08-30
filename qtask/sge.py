@@ -82,7 +82,15 @@ class SGE(qtask.JobRunner):
                 src += '#$ -e %s\n' % task.resources['stderr']
 
             if task.cmd:
-                src += '%s\n' % task.cmd
+                src += '''%s
+PSTAT=${PIPESTATUS[*]}
+for ret in $PSTAT; do
+    if [ $ret -ne 0 ]; then
+        return $ret
+    fi
+done
+return 0
+''' % task.cmd
 
         else:
             src += '#$ -o /dev/null\n'
