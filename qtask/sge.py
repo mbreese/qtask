@@ -89,7 +89,17 @@ class SGE(qtask.JobRunner):
             src += '#$ -e /dev/null\n'
 
             if task.cmd:
-                src += 'func () {\n%s\nreturn $?\n}\n' % task.cmd
+                src += '''func () {
+%s
+PSTAT=${PIPESTATUS[*]}
+for ret in $PSTAT; do
+    if [ $ret -ne 0 ]; then
+        return $ret
+    fi
+done
+return 0
+}
+''' % task.cmd
                 src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
                 src += 'func 2>"$TMPDIR/$JOB_ID.qtask.stderr" >"$TMPDIR/$JOB_ID.qtask.stdout"\n'
                 src += 'RETVAL=$?\n'
