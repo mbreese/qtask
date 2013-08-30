@@ -82,7 +82,7 @@ class SGE(qtask.JobRunner):
                 src += '#$ -e %s\n' % task.resources['stderr']
 
             if task.cmd:
-                src += 'set -o pipefail\nfunc() {\n%s\n return $?\n}\nfunc\n' % task.cmd
+                src += 'set -o pipefail\nfunc() {\n  %s\n  return $?\n}\nfunc\n' % task.cmd
 
         else:
             src += '#$ -o /dev/null\n'
