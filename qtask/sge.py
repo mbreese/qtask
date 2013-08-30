@@ -86,10 +86,10 @@ class SGE(qtask.JobRunner):
 PSTAT=${PIPESTATUS[*]}
 for ret in $PSTAT; do
     if [ $ret -ne 0 ]; then
-        return $ret
+        exit $ret
     fi
 done
-return 0
+exit 0
 ''' % task.cmd
 
         else:
