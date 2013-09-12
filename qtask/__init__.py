@@ -293,7 +293,9 @@ class __Pipeline(object):
                     t.jobid = jobid
                     t.runner = self.runner
                     self._submitted_tasks.add(t)
-                    sys.stderr.write('%s %s (%s)\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends])))
+                    sys.stdout.write('%s\n' % jobid)
+                    if verbose:
+                        sys.stderr.write('%s %s (%s)\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends])))
 
                     if mon and not dryrun:
                         mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample)
