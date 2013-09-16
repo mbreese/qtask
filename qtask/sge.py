@@ -61,7 +61,8 @@ class SGE(qtask.JobRunner):
 
         if task.depends or 'depends' in task.resources:
             depids = [t.jobid for t in task.depends]
-            depids.extend(task.resources['depends'].split(','))
+            if 'depends' in task.resources:
+                depids.extend(task.resources['depends'].split(','))
 
             src += '#$ -hold_jid %s\n' % ','.join(depids)
 
