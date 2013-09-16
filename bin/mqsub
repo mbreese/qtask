@@ -77,7 +77,7 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
         if 'jobname' in resources:
             jobname = resources['jobname']
         else:
-            jobname = '%s' % (cmd_ar[0])
+            jobname = '%s' % (cmd_ar[0].replace('/','_'))
 
         task = qtask.QTask(' '.join(cmd_ar), jobname, resources)
         qtask.pipeline.add_task(task)
@@ -93,7 +93,7 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
             if 'jobname' in resources:
                 jobname = resources['jobname']
             else:
-                jobname = '%s.%s' % (cmd_ar[0], fname)
+                jobname = ('%s.%s' % (cmd_ar[0], fname)).replace('/','_')
 
             for k in resources:
                 val = resources[k]
