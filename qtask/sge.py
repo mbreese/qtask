@@ -43,7 +43,7 @@ class SGE(qtask.JobRunner):
         src = '#!/bin/bash\n'
         src += '#$ -w e\n'
         src += '#$ -terse\n'
-        src += '#$ -N %s\n' % task.fullname if task.fullname[0] in string.ascii_letters else 'q_%s' % task.fullname
+        src += '#$ -N %s\n' % (task.fullname if task.fullname[0] in string.ascii_letters else 'q_%s' % task.fullname)
 
         if 'holding' in task.resources:
             src += '#$ -h\n'
