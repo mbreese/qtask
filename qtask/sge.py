@@ -39,6 +39,9 @@ class SGE(qtask.JobRunner):
 
 
     def qsub(self, task, monitor, verbose=False, dryrun=False):
+        if task.fullname[0] not in string.ascii_letters:
+            task.fullname = 'q_%s' % task.fullname
+
         src = '#!/bin/bash\n'
         src += '#$ -w e\n'
         src += '#$ -terse\n'
