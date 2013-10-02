@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import string
 
 import qtask
 
