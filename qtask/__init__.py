@@ -44,7 +44,9 @@ Note: These values are all job-scheduler dependent
 
     def deps(self, *deps):
         for d in deps:
-            if d and not d.skip:
+            if type(d) == QTaskList:
+                self.deps(*d.tasks)
+            elif d and not d.skip:
                 self.depends.append(d)
 
         return self
@@ -62,6 +64,20 @@ Note: These values are all job-scheduler dependent
     def release(self):
         self.runner.qrls(self.jobid)
 
+
+class QTaskList(object):
+    def __init__(self, tasks):
+        self.tasks = tasks
+
+    def __nonzero__(self):
+        return self.tasks
+
+    def deps(self, *deps):
+        for d in deps:
+            if d and not d.skip:
+                for t in self.tasks:
+                    t.depends.append(d)
+        return self
 
 def task(**task_args):
     def wrap(func):
