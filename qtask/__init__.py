@@ -44,7 +44,9 @@ Note: These values are all job-scheduler dependent
 
     def deps(self, *deps):
         for d in deps:
-            if d and not d.skip:
+            if type(d) == QTaskList:
+                self.deps(*d.tasks)
+            elif d and not d.skip:
                 self.depends.append(d)
 
         return self
@@ -62,6 +64,20 @@ Note: These values are all job-scheduler dependent
     def release(self):
         self.runner.qrls(self.jobid)
 
+
+class QTaskList(object):
+    def __init__(self, tasks):
+        self.tasks = tasks
+
+    def __nonzero__(self):
+        return self.tasks
+
+    def deps(self, *deps):
+        for d in deps:
+            if d and not d.skip:
+                for t in self.tasks:
+                    t.depends.append(d)
+        return self
 
 def task(**task_args):
     def wrap(func):
@@ -293,7 +309,9 @@ class __Pipeline(object):
                     t.jobid = jobid
                     t.runner = self.runner
                     self._submitted_tasks.add(t)
-                    sys.stderr.write('%s %s (%s)\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends])))
+                    sys.stdout.write('%s\n' % jobid)
+                    if verbose:
+                        sys.stderr.write('%s %s (%s)\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends])))
 
                     if mon and not dryrun:
                         mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample)

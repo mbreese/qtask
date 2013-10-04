@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import string
 
 import qtask
 
@@ -42,7 +43,7 @@ class SGE(qtask.JobRunner):
         src = '#!/bin/bash\n'
         src += '#$ -w e\n'
         src += '#$ -terse\n'
-        src += '#$ -N %s\n' % task.fullname
+        src += '#$ -N %s\n' % (task.fullname if task.fullname[0] in string.ascii_letters else 'q_%s' % task.fullname)
 
         if 'holding' in task.resources:
             src += '#$ -h\n'
@@ -61,7 +62,8 @@ class SGE(qtask.JobRunner):
 
         if task.depends or 'depends' in task.resources:
             depids = [t.jobid for t in task.depends]
-            depids.extend(task.resources['depends'].split(','))
+            if 'depends' in task.resources:
+                depids.extend(task.resources['depends'].split(','))
 
             src += '#$ -hold_jid %s\n' % ','.join(depids)
 
