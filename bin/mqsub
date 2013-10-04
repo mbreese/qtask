@@ -139,6 +139,9 @@ if __name__ == '__main__':
             elif arg in ['-holding', '-env']:
                 resources[arg[1:]] = True
             elif arg[0] == '-':
+                if '=' in arg:
+                    sys.stderr.write('ERROR: format for arguments is: -key value, not -key=value\n')
+                    sys.exit(1)
                 last = arg
             else:
                 in_args = False
