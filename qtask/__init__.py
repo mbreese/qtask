@@ -70,7 +70,10 @@ class QTaskList(object):
         self.tasks = tasks
 
     def __nonzero__(self):
-        return len(self.tasks) > 0
+        for t in self.tasks:
+            if not t:
+                return False
+        return True
 
     def deps(self, *deps):
         for d in deps:
