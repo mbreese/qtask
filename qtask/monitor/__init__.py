@@ -54,6 +54,8 @@ class Monitor(object):
         raise NotImplementedError
     def view(self, jobid):
         raise NotImplementedError
+    def find(self, project=None, sample=None, jobname=None):
+        raise NotImplementedError
 
 
 class TextMonitor(Monitor):
