@@ -21,6 +21,7 @@ Valid job resource/arguments:
     stderr      stderr file
     ppn         processors per node (pe shm)
     env         Use current environment (default: True)
+    account     The account to set (usually for resource billing)
 
 Note: These values are all job-scheduler dependent
 '''
@@ -38,6 +39,7 @@ Note: These values are all job-scheduler dependent
         self.runner = None
         self.basename = None
         self.depends = []
+        self.children = []
 
     def __nonzero__(self):
         return not self.skip
@@ -48,6 +50,7 @@ Note: These values are all job-scheduler dependent
                 self.deps(*d.tasks)
             elif d and not d.skip:
                 self.depends.append(d)
+                d.children.append(self)
 
         return self
 
@@ -80,6 +83,7 @@ class QTaskList(object):
             if d and not d.skip:
                 for t in self.tasks:
                     t.depends.append(d)
+                    d.children.append(t)
         return self
 
 def task(**task_args):
@@ -211,11 +215,27 @@ class __Pipeline(object):
                 for line in f:
                     k,v = line.strip().split('=')
                     if k[:7].lower() == 'runner.':
-                        runnerconf[k[7:].lower()] = v
-                    self.config[k.lower()] = v
+                        runnerconf[k[7:].lower().strip()] = v.strip()
+                    self.config[k.lower()] = v.strip()
 
         if 'QTASK_RUNNER' in os.environ:
             self.config['runner'] = os.environ['QTASK_RUNNER']
+
+        for env in os.environ:
+            if env[:5] == 'QTASK_':
+                if env[:12] == 'QTASK_RUNNER_':
+                    runnerconf[env[12:].lower()] = os.environ[env]
+                else:
+                    self.config[env[5:].lower()] = os.environ[env]
+
+        if 'verbose' in self.config and self.config['verbose']:
+            sys.stderr.write('QTask config:\n')
+            for k in self.config:
+                sys.stderr.write('  %s => %s\n' % (k, self.config[k]))
+
+            sys.stderr.write('\nQTask runner config:\n')
+            for k in runnerconf:
+                sys.stderr.write('  %s => %s\n' % (k, runnerconf[k]))
 
         if self.config['runner'] == 'sge':
             from sge import SGE
@@ -318,7 +338,6 @@ class __Pipeline(object):
 
                     if mon and not dryrun:
                         mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample)
-                        # subprocess.call([os.path.join(os.path.dirname(__file__), "..", "bin", "qtask-mon"), self.config['monitor'], "submit", str(jobid), t.name], shell=True)
                 
                 remaining = []
                 for t in self.tasks:
@@ -335,13 +354,17 @@ class __Pipeline(object):
         except Exception, e:
             print e
             # there was a problem...
-            self.abort()
+            self.abort(mon)
             raise e
 
-    def abort(self):
+    def abort(self, monitor=None):
         for t in self._submitted_tasks:
             if not t.skip:
                 self.runner.qdel(t.jobid)
+                if monitor:
+                    monitor.abort(t.jobid, 'submit')
 
+        if monitor:
+            monitor.close()
 
 pipeline = __Pipeline()

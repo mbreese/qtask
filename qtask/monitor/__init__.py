@@ -1,6 +1,8 @@
 import os
 import datetime
 import time
+# import signal
+
 
 def load_monitor(uri):
     if uri[:7] == 'file://':
@@ -12,6 +14,17 @@ def load_monitor(uri):
 
 class LockAcquireError(Exception):
     pass
+
+# __active_locks = set()
+# def __cleanup_handler(signum, frame): 
+#     global __active_locks
+#     for lock in __active_locks:
+#         lock._abort()
+#     __active_locks.clear()
+
+# signal.signal(signal.SIGTERM, __cleanup_handler) 
+# signal.signal(signal.SIGINT , __cleanup_handler) 
+
 
 class Lock(object):
     def __init__(self, path):
@@ -27,6 +40,8 @@ class Lock(object):
             try:
                 os.mkdir(self.path)
                 self.__locked = True
+                # global __active_locks
+                # __active_locks.add(self)
                 return
             except OSError:
                 time.sleep(.1)
@@ -37,10 +52,19 @@ class Lock(object):
         if self.__locked:
             self.__locked = False
             os.rmdir(self.path)
+    #         global __active_locks
+    #         __active_locks.remove(self)
+
+    # def _abort(self):
+    #     if self.__locked:
+    #         self.__locked = False
+    #         os.rmdir(self.path)
 
 
 class Monitor(object):
     def __init__(self):
+        pass
+    def close(self):
         pass
     def submit(self, jobid, jobname, procs=1, deps=[], project=None):
         raise NotImplementedError
@@ -52,9 +76,11 @@ class Monitor(object):
         raise NotImplementedError
     def stderr(self, jobid, filename):
         raise NotImplementedError
-    def view(self, jobid):
+    def killdeps(self, jobid):
         raise NotImplementedError
-    def find(self, project=None, sample=None, jobname=None):
+    def signal(self, jobid, signal):
+        raise NotImplementedError
+    def find(self, project=None, sample=None, jobname=None, jobid=None):
         raise NotImplementedError
 
 

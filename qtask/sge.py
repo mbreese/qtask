@@ -6,9 +6,10 @@ import qtask
 
 
 class SGE(qtask.JobRunner):
-    def __init__(self, parallelenv='shm', time_multiplier=1.0, *args, **kwargs):
+    def __init__(self, parallelenv='shm', time_multiplier=1.0, account=None, *args, **kwargs):
         self.dry_run_cur_jobid = 1
         self.parallelenv = parallelenv
+        self.account = account
         self.time_multiplier = float(time_multiplier)
 
     def _calc_time(self, val):
@@ -79,20 +80,32 @@ class SGE(qtask.JobRunner):
         if 'wd' in task.resources:
             src += '#$ -wd %s\n' % task.resources['wd']
 
+        if 'account' in task.resources and task.resources['account']:
+            src += '#$ -A %s\n' % task.resources['account']
+        elif self.account:
+            src += '#$ -A %s\n' % self.account
+
         if not monitor:
             if 'stdout' in task.resources:
                 src += '#$ -o %s\n' % task.resources['stdout']
 
             if 'stderr' in task.resources:
                 src += '#$ -e %s\n' % task.resources['stderr']
-
             if task.cmd:
                 src += 'set -o pipefail\nfunc() {\n  %s\n  return $?\n}\nfunc\n' % task.cmd
-
         else:
             src += '#$ -o /dev/null\n'
             src += '#$ -e /dev/null\n'
 
+            if task.children:
+                src += 'child_term() {\nchild_error "SIGTERM"\n}\n'
+                src += 'child_kill() {\nchild_error "SIGKILL"\n}\n'
+                src += 'child_error() {\n'
+                src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
+                src += '}\n'
+                src += 'trap child_term SIGTERM\n'
+                src += 'trap child_kill SIGKILL\n'
+    
             if task.cmd:
                 src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.cmd
                 src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
@@ -108,7 +121,11 @@ class SGE(qtask.JobRunner):
                     src += 'mv "$TMPDIR/$JOB_ID.qtask.stderr" "%s"\n' % task.resources['stderr']
                 else:
                     src += 'rm "$TMPDIR/$JOB_ID.qtask.stderr"\n'
-                src += "exit $RETVAL"
+
+                src += 'if [ $RETVAL -ne 0 ]; then\n'
+                src += '  "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
+                src += 'fi\n'
+                src += 'exit $RETVAL\n'
             else:
                 src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
                 src += '"%s" "%s" stop $JOB_ID 0\n' % (qtask.QTASK_MON, monitor)

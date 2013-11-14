@@ -30,6 +30,8 @@ CREATE TABLE jobs (
     name TEXT,
     procs INTEGER,
     hostname TEXT,
+    abort_code INTEGER,
+    aborted_by TEXT,
     retcode INTEGER,
     submit INTEGER,
     start INTEGER,
@@ -37,7 +39,8 @@ CREATE TABLE jobs (
     src BLOB,
     stdout BLOB,
     stderr BLOB
-);''')
+);
+''')
             conn.execute('''
 CREATE TABLE job_deps (
     jobid TEXT,
@@ -62,8 +65,17 @@ CREATE TABLE job_deps (
         self.conn.execute(sql, args)
         self.conn.commit()
 
+    def query(self, sql, args=None):
+        self.connect()
+
+        cur = self.conn.cursor()
+        cur.execute(sql, args)
+        for row in cur:
+            yield row
+        cur.close()
+
     def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None):
-        self.execute('INSERT INTO jobs (jobid, project, sample, name, procs, submit, src) VALUES (?, ?, ?, ?, ?, ?, ?)', (jobid, project, sample, jobname, procs, _now_ts(), src))
+        self.execute('INSERT INTO jobs (jobid, project, sample, name, procs, submit, src, abort_code) VALUES (?, ?, ?, ?, ?, ?, ?, 0)', (jobid, project, sample, jobname, procs, _now_ts(), src))
         for d in deps:
             self.execute('INSERT INTO job_deps (jobid, parentid) VALUES (?,?)', (jobid, d))
 
@@ -95,3 +107,27 @@ CREATE TABLE job_deps (
                 stderr_s = re.sub('(.*)\r(.*?)\r','\\2',f.read())
 
         self.execute('UPDATE jobs SET stderr = ? WHERE jobid = ?', (stderr_s, jobid))
+
+    def signal(self, jobid, sig):
+        self.abort(jobid, sig, 2)
+
+    def killdeps(self, jobid):
+        children = set()
+        for cid in self._find_children(jobid):
+            children.add(cid)
+
+        for cid in children:
+            self.abort(cid, jobid, 1)
+
+    def _find_children(self, jobid):
+        for row in self.query('SELECT jobid FROM job_deps WEHRE parentid = ?', (jobid)):
+            childid = row[0]
+            for cid in self._find_children(childid):
+                yield cid
+            yield childid
+
+    def abort(self, jobid, reason, code):
+        self.execute('UPDATE jobs SET abort_code = ?, aborted_by = ? WHERE jobid = ?', (code, reason, jobid))
+
+    def find(self, project=None, sample=None, jobname=None, jobid=None):
+        raise NotImplementedError
