@@ -71,14 +71,6 @@ class SGE(qtask.JobRunner):
             src += '#$ -o /dev/null\n'
             src += '#$ -e /dev/null\n'
 
-            src += 'child_term() {\nchild_error "SIGTERM"\n}\n'
-            src += 'child_kill() {\nchild_error "SIGKILL"\n}\n'
-            src += 'child_error() {\n'
-            src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
-            src += '}\n'
-            src += 'trap child_term SIGTERM\n'
-            src += 'trap child_kill SIGKILL\n'
-    
             if task.cmd:
                 src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.cmd
                 src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
