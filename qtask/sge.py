@@ -70,7 +70,16 @@ class SGE(qtask.JobRunner):
         else:
             src += '#$ -o /dev/null\n'
             src += '#$ -e /dev/null\n'
+            src += '#$ -notify\n'
 
+            src += 'notify_stop() {\nchild_notify "SIGSTOP pending"\n}\n'
+            src += 'notify_kill() {\nchild_notify "SIGKILL pending"\n}\n'
+            src += 'child_notify() {\n'
+            src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
+            src += '}\n'
+            src += 'trap notify_stop SIGUSR1\n'
+            src += 'trap notify_kill SIGUSR2\n'
+    
             if task.cmd:
                 src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.cmd
                 src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
@@ -89,7 +98,7 @@ class SGE(qtask.JobRunner):
 
                 src += 'if [ $RETVAL -ne 0 ]; then\n'
                 src += '  "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
-                src += '  exit 100\n'  ## forcing an exit to 100 might  stop children from starting...
+                src += '  exit 100\n'  ## forcing an exit to 100 might stop children from running...
                 src += 'fi\n'
                 src += 'exit $RETVAL\n'
             else:
