@@ -142,7 +142,7 @@ def check_path(prog):
 
 class JobRunner(object):
     def __init__(self, multipler=1.0):
-        self.multipler = multipler
+        self.multipler = float(multipler)
 
     def done(self):
         pass
