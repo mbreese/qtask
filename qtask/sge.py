@@ -89,6 +89,7 @@ class SGE(qtask.JobRunner):
 
                 src += 'if [ $RETVAL -ne 0 ]; then\n'
                 src += '  "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
+                src += '  exit 100\n'  ## forcing an exit to 100 might  stop children from starting...
                 src += 'fi\n'
                 src += 'exit $RETVAL\n'
             else:
