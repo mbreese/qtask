@@ -6,38 +6,12 @@ import qtask
 
 
 class SGE(qtask.JobRunner):
-    def __init__(self, parallelenv='shm', time_multiplier=1.0, account=None, *args, **kwargs):
+    def __init__(self, parallelenv='shm', account=None, tmpdir='/tmp', *args, **kwargs):
         self.dry_run_cur_jobid = 1
         self.parallelenv = parallelenv
         self.account = account
-        self.time_multiplier = float(time_multiplier)
-
-    def _calc_time(self, val):
-        seconds = 0
-        if ':' in val:
-            cols = [int(x) for x in val.split(':')]
-            if len(cols) == 3:
-                h = cols[0]
-                m = cols[1]
-                s = cols[2]
-            elif len(cols) == 2:
-                h = 0
-                m = cols[0]
-                s = cols[1]
-
-            seconds = s + (m * 60) + (h * 60 * 60)
-        else:
-            seconds = int(val)
-
-        seconds = seconds * self.time_multiplier
-
-        h = seconds / (60 * 60)
-        seconds = seconds % (60 * 60)
-
-        m = seconds / 60
-        s = seconds % 60
-
-        return '%d:%02d:%02d' % (h, m, s)
+        self.tmpdir = tmpdir
+        qtask.JobRunner(self, *args, **kwargs)
 
 
     def qsub(self, task, monitor, verbose=False, dryrun=False):
@@ -97,14 +71,13 @@ class SGE(qtask.JobRunner):
             src += '#$ -o /dev/null\n'
             src += '#$ -e /dev/null\n'
 
-            if task.children:
-                src += 'child_term() {\nchild_error "SIGTERM"\n}\n'
-                src += 'child_kill() {\nchild_error "SIGKILL"\n}\n'
-                src += 'child_error() {\n'
-                src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
-                src += '}\n'
-                src += 'trap child_term SIGTERM\n'
-                src += 'trap child_kill SIGKILL\n'
+            src += 'child_term() {\nchild_error "SIGTERM"\n}\n'
+            src += 'child_kill() {\nchild_error "SIGKILL"\n}\n'
+            src += 'child_error() {\n'
+            src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
+            src += '}\n'
+            src += 'trap child_term SIGTERM\n'
+            src += 'trap child_kill SIGKILL\n'
     
             if task.cmd:
                 src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.cmd

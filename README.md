@@ -13,6 +13,6 @@ You can configure which job scheduler you use by creating a file named $HOME/.qt
 
 	runner = sge
 	runner.parallelenv = shm
-	runner.time_multiplier = 2.0
+	runner.multiplier = 2.0
 	monitor = sqlite://~/qtask-jobs.db
 

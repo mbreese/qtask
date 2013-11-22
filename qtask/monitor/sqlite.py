@@ -30,12 +30,13 @@ CREATE TABLE jobs (
     name TEXT,
     procs INTEGER,
     hostname TEXT,
+    retcode INTEGER,
+    submit_time INTEGER,
+    start_time INTEGER,
+    stop_time INTEGER,
+    abort_time INTEGER,
     abort_code INTEGER,
     aborted_by TEXT,
-    retcode INTEGER,
-    submit INTEGER,
-    start INTEGER,
-    stop INTEGER,
     src BLOB,
     stdout BLOB,
     stderr BLOB
@@ -75,15 +76,15 @@ CREATE TABLE job_deps (
         cur.close()
 
     def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None):
-        self.execute('INSERT INTO jobs (jobid, project, sample, name, procs, submit, src, abort_code) VALUES (?, ?, ?, ?, ?, ?, ?, 0)', (jobid, project, sample, jobname, procs, _now_ts(), src))
+        self.execute('INSERT INTO jobs (jobid, project, sample, name, procs, submit_time, src, abort_code) VALUES (?, ?, ?, ?, ?, ?, ?, 0)', (jobid, project, sample, jobname, procs, _now_ts(), src))
         for d in deps:
             self.execute('INSERT INTO job_deps (jobid, parentid) VALUES (?,?)', (jobid, d))
 
     def start(self, jobid, hostname=None):
-        self.execute('UPDATE jobs SET hostname = ?, start = ? WHERE jobid = ?', (hostname, _now_ts(), jobid))
+        self.execute('UPDATE jobs SET hostname = ?, start_time = ? WHERE jobid = ?', (hostname, _now_ts(), jobid))
 
     def stop(self, jobid, retcode, stdout=None, stderr=None):
-        self.execute('UPDATE jobs SET retcode = ?, stop = ? WHERE jobid = ?', (retcode, _now_ts(), jobid))
+        self.execute('UPDATE jobs SET retcode = ?, stop_time = ? WHERE jobid = ?', (retcode, _now_ts(), jobid))
 
         if stdout:
             self.stdout(jobid, stdout)
@@ -127,7 +128,7 @@ CREATE TABLE job_deps (
             yield childid
 
     def abort(self, jobid, reason, code):
-        self.execute('UPDATE jobs SET abort_code = ?, aborted_by = ? WHERE jobid = ?', (code, reason, jobid))
+        self.execute('UPDATE jobs SET abort_code = ?, aborted_by = ?, abort_time = ? WHERE jobid = ?', (code, reason, _now_ts(), jobid))
 
     def find(self, project=None, sample=None, jobname=None, jobid=None):
         raise NotImplementedError

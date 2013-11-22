@@ -141,6 +141,9 @@ def check_path(prog):
 
 
 class JobRunner(object):
+    def __init__(self, multipler=1.0):
+        self.multipler = multipler
+
     def done(self):
         pass
 
@@ -154,11 +157,39 @@ class JobRunner(object):
         'return a tuple: (jobid, script_src)'
         raise NotImplementedError
 
+    def _calc_time(self, val):
+        seconds = 0
+        if ':' in val:
+            cols = [int(x) for x in val.split(':')]
+            if len(cols) == 3:
+                h = cols[0]
+                m = cols[1]
+                s = cols[2]
+            elif len(cols) == 2:
+                h = 0
+                m = cols[0]
+                s = cols[1]
+
+            seconds = s + (m * 60) + (h * 60 * 60)
+        else:
+            seconds = int(val)
+
+        seconds = seconds * self.multiplier
+
+        h = seconds / (60 * 60)
+        seconds = seconds % (60 * 60)
+
+        m = seconds / 60
+        s = seconds % 60
+
+        return '%d:%02d:%02d' % (h, m, s)
+
 
 class BashRunner(JobRunner):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, tmpdir='/tmp', *args, **kwargs):
         self.script = '#!/bin/bash\n'
         self._jobid = 1
+        self.tmpdir = tmpdir
 
     def qsub(self, task, monitor, verbose=False, dryrun=False):
         jobid = 'job.%s' % self._jobid
@@ -166,19 +197,19 @@ class BashRunner(JobRunner):
                 self.script += 'func_%s () {\n%s\nreturn $?\n}\n' % (jobid, task.cmd)
 
                 self.script += '"%s" "%s" start %s\n' % (QTASK_MON, monitor, jobid)
-                self.script += 'func_%s 2>"/tmp/%s.qtask.stderr" >"/tmp/%s.qtask.stdout"\n' % (jobid, jobid, jobid)
+                self.script += 'func_%s 2>"%s/%s.qtask.stderr" >"/tmp/%s.qtask.stdout"\n' % (jobid, self.tmpdir, jobid, jobid)
                 self.script += 'RETVAL=$?\n'
-                self.script += '"%s" "%s" stop %s $RETVAL "/tmp/%s.qtask.stdout" "/tmp/%s.qtask.stderr"\n' % (QTASK_MON, monitor, jobid, jobid, jobid)
+                self.script += '"%s" "%s" stop %s $RETVAL "%s/%s.qtask.stdout" "%s/%s.qtask.stderr"\n' % (QTASK_MON, monitor, jobid, self.tmpdir, jobid, self.tmpdir, jobid)
 
                 if 'stdout' in task.resources:
-                    self.script += 'mv "/tmp/%s.qtask.stdout" "%s"\n' % (jobid, task.resources['stdout'])
+                    self.script += 'mv "%s/%s.qtask.stdout" "%s"\n' % (self.tmpdir, jobid, task.resources['stdout'])
                 else:
-                    self.script += 'rm "/tmp/%s.qtask.stdout"\n' % (jobid)
+                    self.script += 'rm "%s/%s.qtask.stdout"\n' % (self.tmpdir, jobid)
 
                 if 'stderr' in task.resources:
-                    self.script += 'mv "/tmp/%s.qtask.stderr" "%s"\n' % (jobid, task.resources['stderr'])
+                    self.script += 'mv "%s/%s.qtask.stderr" "%s"\n' % (self.tmpdir, jobid, task.resources['stderr'])
                 else:
-                    self.script += 'rm "/tmp/%s.qtask.stderr"\n' % (jobid)
+                    self.script += 'rm "%s/%s.qtask.stderr"\n' % (self.tmpdir, jobid)
 
                 self.script += 'if [ "$RETVAL" -ne 0 ]; then\n echo "Error processing job: %s"\n exit $RETVAL\nfi\n' % jobid
         else:
@@ -208,7 +239,7 @@ class __Pipeline(object):
         # default to SGE/OGE as a runner and no job monitor
         self.config = {'runner': 'sge', 'monitor': None}
 
-        runnerconf = {}
+        runnerconf = {'tmpdir': '/tmp'}
 
         if os.path.exists(os.path.expanduser('~/.qtaskrc')):
             with open(os.path.expanduser('~/.qtaskrc')) as f:
@@ -218,8 +249,8 @@ class __Pipeline(object):
                         runnerconf[k[7:].lower().strip()] = v.strip()
                     self.config[k.lower()] = v.strip()
 
-        if 'QTASK_RUNNER' in os.environ:
-            self.config['runner'] = os.environ['QTASK_RUNNER']
+        # if 'QTASK_RUNNER' in os.environ:
+        #     self.config['runner'] = os.environ['QTASK_RUNNER']
 
         for env in os.environ:
             if env[:5] == 'QTASK_':
