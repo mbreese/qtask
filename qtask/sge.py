@@ -11,7 +11,7 @@ class SGE(qtask.JobRunner):
         self.parallelenv = parallelenv
         self.account = account
         self.tmpdir = tmpdir
-        qtask.JobRunner(self, *args, **kwargs)
+        qtask.JobRunner.__init__(self, *args, **kwargs)
 
 
     def qsub(self, task, monitor, verbose=False, dryrun=False):
