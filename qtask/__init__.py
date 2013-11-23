@@ -53,6 +53,8 @@ Note: These values are all job-scheduler dependent
             elif type(d) == QTask and not d.skip:
                 self.depends.append(d)
                 d.children.append(self)
+            elif type(d) == list:
+                self.deps(*deps)
             elif type(d) == int:
                 self.depends.append(_QTaskDirectWrapper(d))
             else:
