@@ -44,6 +44,11 @@ Note: These values are all job-scheduler dependent
     def __nonzero__(self):
         return not self.skip
 
+    def direct_depid(self, dep_ids):
+        for did in dep_ids:
+            self.depends.append(_QTaskDirectWrapper(did))
+        return self
+
     def deps(self, *deps):
         for d in deps:
             if not d:
@@ -53,8 +58,6 @@ Note: These values are all job-scheduler dependent
             elif type(d) == QTask and not d.skip:
                 self.depends.append(d)
                 d.children.append(self)
-            elif type(d) == int:
-                self.depends.append(_QTaskDirectWrapper(d))
             else:
                 raise ValueError('Unknown dependency type! %s' % type(d))
 
@@ -76,7 +79,7 @@ Note: These values are all job-scheduler dependent
 
 class _QTaskDirectWrapper(object):
     def __init__(self, jobid):
-        self.jobid = jobid
+        self.jobid = str(jobid)
 
 
 class QTaskList(object):
