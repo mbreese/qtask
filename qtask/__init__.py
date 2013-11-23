@@ -363,7 +363,7 @@ class __Pipeline(object):
                     # check to see if dependencies have been submitted
                     clear = True
                     for d in t.depends:
-                        if d and d not in self._submitted_tasks:
+                        if d and type(d) != _QTaskDirectWrapper and d not in self._submitted_tasks:
                             clear = False
                             break
                     if not clear:
