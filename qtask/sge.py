@@ -14,7 +14,7 @@ class SGE(qtask.JobRunner):
         qtask.JobRunner.__init__(self, *args, **kwargs)
 
 
-    def qsub(self, task, monitor, verbose=False, dryrun=False):
+    def qsub(self, task, monitor, dryrun=False):
         src = '#!/bin/bash\n'
         src += '#$ -w e\n'
         src += '#$ -terse\n'
@@ -105,9 +105,6 @@ class SGE(qtask.JobRunner):
                 src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
                 src += '"%s" "%s" stop $JOB_ID 0\n' % (qtask.QTASK_MON, monitor)
 
-        if verbose:
-            print '-[%s]---------------' % task.name
-            print src
 
         if not dryrun:
             proc = subprocess.Popen(["qsub", ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

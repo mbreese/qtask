@@ -164,7 +164,7 @@ class JobRunner(object):
     def qrls(self, jobid):
         raise NotImplementedError
 
-    def qsub(self, task, monitor, verbose=False, dryrun=False):
+    def qsub(self, task, monitor, dryrun=False):
         'return a tuple: (jobid, script_src)'
         raise NotImplementedError
 
@@ -202,7 +202,7 @@ class BashRunner(JobRunner):
         self._jobid = 1
         self.tmpdir = tmpdir
 
-    def qsub(self, task, monitor, verbose=False, dryrun=False):
+    def qsub(self, task, monitor, dryrun=False):
         jobid = 'job.%s' % self._jobid
         if monitor:
                 self.script += 'func_%s () {\n%s\nreturn $?\n}\n' % (jobid, task.cmd)
@@ -370,13 +370,13 @@ class __Pipeline(object):
                         continue
 
                     # submit
-                    jobid, src = self.runner.qsub(t, monitor=self.config['monitor'], verbose=verbose, dryrun=dryrun)
+                    jobid, src = self.runner.qsub(t, monitor=self.config['monitor'], dryrun=dryrun)
                     t.jobid = jobid
                     t.runner = self.runner
                     self._submitted_tasks.add(t)
                     sys.stdout.write('%s\n' % jobid)
                     if verbose:
-                        sys.stderr.write('%s %s (%s)\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends])))
+                        sys.stderr.write('-[%s - %s (%s)]---------------\n%s\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends]), src))
 
                     if mon and not dryrun:
                         mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample)
