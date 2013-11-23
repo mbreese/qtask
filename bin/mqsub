@@ -26,19 +26,20 @@ path name. Similarly, {%^.txt} would use the basename and replace '.txt' in
 the filename.
 
 Example:
-    mqsub -walltime 2:00:00 -ppn 4 process_file.sh {} \\> {^.txt}.processed.txt -- *.txt
+    mqsub -walltime 2:00:00 -ppn 4 run.sh {} \\> {^.txt}.log -- *.txt
 
     For files "input1.txt" and "input2.txt" this would run:
-    $ process_file.sh input1.txt > input1.processed.txt
-    $ process_file.sh input2.txt > input2.processed.txt
+    $ run.sh input1.txt > input1.log
+    $ run.sh input2.txt > input2.log
 
 '''
     print qtask.QTask.__doc__
 
     print '''\
 Other job arguments:
-  -v        Verbose output (writes the submitted scripts to stdout)
-  -dr       Dry-run - don't actually submit jobs, just generate the scripts
+  -deps joblist   Add the jobslist as dependencies (should be comma separated)
+  -v              Verbose output (writes the submitted scripts to stdout)
+  -dr             Dry-run - don't submit jobs, just generate the scripts
 
 Monitoring arguments:
   -monitor uri    URI of a job-monitor (sqlite://filename.db)
@@ -65,7 +66,7 @@ def _var_repl(arg, fname):
 
 
 
-def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
+def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False, deps=[]):
     if 'monitor' in resources:
         qtask.pipeline.monitor = resources['monitor']
     if 'project' in resources:
@@ -80,7 +81,9 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
             jobname = '%s' % (cmd_ar[0].replace('/','_'))
 
         task = qtask.QTask(' '.join(cmd_ar), jobname, resources)
+        task.deps(deps)
         qtask.pipeline.add_task(task)
+
 
     else:
         for fname in infiles:
@@ -104,6 +107,7 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False):
 
 
             task = qtask.QTask(' '.join(cmd_repl), jobname, job_resources)
+            task.deps(deps)
 
             if 'sample' in resources:
                 qtask.pipeline.sample = _var_repl(resources['sample'], fname)
@@ -122,6 +126,7 @@ if __name__ == '__main__':
     resources = {'env': True}
     cmd_ar = []
     infiles = []
+    deps = []
 
     verbose = False
     dryrun = False
@@ -129,7 +134,10 @@ if __name__ == '__main__':
     last = None
     for arg in sys.argv[1:]:
         if in_args:
-            if last:
+            if last == '-deps':
+                deps = [int(x) for x in arg.split(',')]
+                last = None
+            elif last:
                 resources[last[1:]] = arg
                 last = None
             elif arg == '-v':
@@ -162,4 +170,4 @@ if __name__ == '__main__':
     if not cmd_ar:
         usage()
 
-    submit(cmd_ar, infiles, resources, verbose, dryrun)
+    submit(cmd_ar, infiles, resources, verbose, dryrun, deps)

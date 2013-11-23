@@ -46,11 +46,17 @@ Note: These values are all job-scheduler dependent
 
     def deps(self, *deps):
         for d in deps:
+            if not d:
+                continue
             if type(d) == QTaskList:
                 self.deps(*d.tasks)
-            elif d and not d.skip:
+            elif type(d) == QTask and not d.skip:
                 self.depends.append(d)
                 d.children.append(self)
+            elif type(d) == int:
+                self.depends.append(_QTaskDirectWrapper(d))
+            else:
+                raise ValueError('Unknown dependency type! %s' % type(d))
 
         return self
 
@@ -66,6 +72,11 @@ Note: These values are all job-scheduler dependent
 
     def release(self):
         self.runner.qrls(self.jobid)
+
+
+class _QTaskDirectWrapper(object):
+    def __init__(self, jobid):
+        self.jobid = jobid
 
 
 class QTaskList(object):
