@@ -83,7 +83,11 @@ if __name__ == '__main__':
         mon.stdout(jobid, *extra)
     elif cmd == 'stderr':
         mon.stderr(jobid, *extra)
-    elif cmd == 'abort':
-        mon.abort(jobid, *extra)
+    elif cmd == 'killdeps':
+        mon.killdeps(jobid, *extra)
+    elif cmd == 'signal':
+        mon.signal(jobid, *extra)
+    else:
+        sys.stderr.write('Unknown command: %s!\n\n' % cmd)
 
     mon.close()
