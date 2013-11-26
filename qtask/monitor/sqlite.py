@@ -122,7 +122,7 @@ CREATE TABLE job_deps (
             self.abort(cid, jobid, 1)
 
     def _find_children(self, jobid):
-        for row in self.query('SELECT jobid FROM job_deps WHERE parentid = ?', (jobid)):
+        for row in self.query('SELECT jobid FROM job_deps WHERE parentid = ?', (jobid, )):
             childid = row[0]
             for cid in self._find_children(childid):
                 yield cid
