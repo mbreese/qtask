@@ -129,6 +129,12 @@ CREATE TABLE job_deps (
             yield childid
 
     def abort(self, jobid, reason, code):
+        '''
+        codes:
+            0 - error during submission
+            1 - error with parent
+            2 - got killed by SGE/job scheduler
+        '''
         self.execute('UPDATE jobs SET abort_code = ?, aborted_by = ?, abort_time = ? WHERE jobid = ?', (code, reason, _now_ts(), jobid))
 
     def find(self, project=None, sample=None, jobname=None, jobid=None):
