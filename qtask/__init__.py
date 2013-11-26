@@ -242,7 +242,7 @@ class BashRunner(JobRunner):
         print self.script
 
 
-@task(holding=True, force_first=True, walltime="00:00:10")
+@task(holding=True, force_first=True, walltime="00:00:10", mem='10M')
 def holding():
     return ''
 
@@ -407,7 +407,7 @@ class __Pipeline(object):
             if not t.skip:
                 self.runner.qdel(t.jobid)
                 if monitor:
-                    monitor.abort(t.jobid, 'submit')
+                    monitor.abort(t.jobid, 'submit', '0')
 
         if monitor:
             monitor.close()
