@@ -76,6 +76,7 @@ class SGE(qtask.JobRunner):
             src += 'notify_kill() {\nchild_notify "SIGKILL pending"\n}\n'
             src += 'child_notify() {\n'
             src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
+            src += '  exit 100\n'
             src += '}\n'
             src += 'trap notify_stop SIGUSR1\n'
             src += 'trap notify_kill SIGUSR2\n'
