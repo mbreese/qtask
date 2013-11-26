@@ -373,16 +373,25 @@ class __Pipeline(object):
                         continue
 
                     # submit
-                    jobid, src = self.runner.qsub(t, monitor=self.config['monitor'], dryrun=dryrun)
-                    t.jobid = jobid
-                    t.runner = self.runner
-                    self._submitted_tasks.add(t)
-                    sys.stdout.write('%s\n' % jobid)
-                    if verbose:
-                        sys.stderr.write('-[%s - %s (%s)]---------------\n%s\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends]), src))
 
-                    if mon and not dryrun:
-                        mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample)
+                    if t.resources['holding'] and t.resources['force_first'] and not t.children:
+                        # This is a front-loaded holding job meant to hold all the other jobs from starting
+                        # until the entire pipeline has been submitted. If there aren't any children for
+                        # this job, then there is no point in submitting it.
+
+                        t.skip = True
+
+                    else:
+                        jobid, src = self.runner.qsub(t, monitor=self.config['monitor'], dryrun=dryrun)
+                        t.jobid = jobid
+                        t.runner = self.runner
+                        self._submitted_tasks.add(t)
+                        sys.stdout.write('%s\n' % jobid)
+                        if verbose:
+                            sys.stderr.write('-[%s - %s (%s)]---------------\n%s\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends]), src))
+
+                        if mon and not dryrun:
+                            mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample)
                 
                 remaining = []
                 for t in self.tasks:
