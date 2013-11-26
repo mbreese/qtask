@@ -111,6 +111,7 @@ CREATE TABLE job_deps (
 
     def signal(self, jobid, sig):
         self.abort(jobid, sig, 2)
+        self.killdeps(jobid)
 
     def killdeps(self, jobid):
         children = set()

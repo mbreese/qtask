@@ -7,8 +7,8 @@ class PBS(qtask.JobRunner):
 
         qtask.JobRunner.__init__(self, *args, **kwargs)
 
-    def qdel(self, jobid):
-        subprocess.call(["qdel", str(jobid)])
+    def qdel(self, *jobid):
+        subprocess.call(["qdel", ' '.join([str(x) for x in jobid])])
 
-    def qrls(self, jobid):
-        subprocess.call(["qrls", str(jobid)])
+    def qrls(self, *jobid):
+        subprocess.call(["qrls", ' '.join([str(x) for x in jobid])])

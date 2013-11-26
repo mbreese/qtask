@@ -161,10 +161,10 @@ class JobRunner(object):
     def done(self):
         pass
 
-    def qdel(self, jobid):
+    def qdel(self, *jobid):
         raise NotImplementedError
 
-    def qrls(self, jobid):
+    def qrls(self, *jobid):
         raise NotImplementedError
 
     def qsub(self, task, monitor, dryrun=False):

@@ -121,8 +121,8 @@ class SGE(qtask.JobRunner):
         self.dry_run_cur_jobid += 1
         return 'dryrun.%s' % jobid, src
 
-    def qdel(self, jobid):
-        subprocess.call(["qdel", str(jobid)])
+    def qdel(self, *jobid):
+        subprocess.call(["qdel", ','.join([str(x) for x in jobid])])
 
-    def qrls(self, jobid):
-        subprocess.call(["qrls", str(jobid)])
+    def qrls(self, *jobid):
+        subprocess.call(["qrls", ','.join([str(x) for x in jobid])])
