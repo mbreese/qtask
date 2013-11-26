@@ -59,52 +59,75 @@ class SGE(qtask.JobRunner):
         elif self.account:
             src += '#$ -A %s\n' % self.account
 
-        if not monitor:
+        if monitor:
+            src += '#$ -o /dev/null\n'
+            src += '#$ -e /dev/null\n'
+        else:
             if 'stdout' in task.resources:
                 src += '#$ -o %s\n' % task.resources['stdout']
 
             if 'stderr' in task.resources:
                 src += '#$ -e %s\n' % task.resources['stderr']
-            if task.cmd:
-                src += 'set -o pipefail\nfunc() {\n  %s\n  return $?\n}\nfunc\n' % task.cmd
-        else:
-            src += '#$ -o /dev/null\n'
-            src += '#$ -e /dev/null\n'
-            src += '#$ -notify\n'
 
-            src += 'notify_stop() {\nchild_notify "SIGSTOP pending"\n}\n'
-            src += 'notify_kill() {\nchild_notify "SIGKILL pending"\n}\n'
-            src += 'child_notify() {\n'
+        src += '#$ -notify\n'
+        src += 'FAILED=""\n'
+        src += 'notify_stop() {\nchild_notify "SIGSTOP"\n}\n'
+        src += 'notify_kill() {\nchild_notify "SIGKILL"\n}\n'
+        src += 'child_notify() {\n'
+        src += '  FAILED="1"\n'
+        src += '  child_kill $JOB_ID\n'
+
+        if monitor:
             src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
-            src += '  exit 100\n'
-            src += '}\n'
-            src += 'trap notify_stop SIGUSR1\n'
-            src += 'trap notify_kill SIGUSR2\n'
+            src += '  "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
+
+        src += '}\n'
+        src += 'child_kill() {\n'
+        src += '  local jid=""\n'
+        src += '  for jid in $(qstat -f -j $1 | grep jid_successor_list | awk \'{print $2}\' | sed -e \'s/,/ /g\'); do\n'
+        src += '    child_kill $jid\n'
+        src += '    qdel $jid\n'
+        src += '  done\n'
+        src += '}\n'
+
+        src += 'trap notify_stop SIGUSR1\n'
+        src += 'trap notify_kill SIGUSR2\n'
     
-            if task.cmd:
-                src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.cmd
-                src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
-                src += 'func 2>"$TMPDIR/$JOB_ID.qtask.stderr" >"$TMPDIR/$JOB_ID.qtask.stdout"\n'
-                src += 'RETVAL=$?\n'
-                src += '"%s" "%s" stop $JOB_ID $RETVAL "$TMPDIR/$JOB_ID.qtask.stdout" "$TMPDIR/$JOB_ID.qtask.stderr"\n' % (qtask.QTASK_MON, monitor)
-                if 'stdout' in task.resources:
-                    src += 'mv "$TMPDIR/$JOB_ID.qtask.stdout" "%s"\n' % task.resources['stdout']
-                else:
-                    src += 'rm "$TMPDIR/$JOB_ID.qtask.stdout"\n'
+        src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.cmd
 
-                if 'stderr' in task.resources:
-                    src += 'mv "$TMPDIR/$JOB_ID.qtask.stderr" "%s"\n' % task.resources['stderr']
-                else:
-                    src += 'rm "$TMPDIR/$JOB_ID.qtask.stderr"\n'
-
-                src += 'if [ $RETVAL -ne 0 ]; then\n'
-                src += '  "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
-                src += '  exit 100\n'  ## forcing an exit to 100 might stop children from running...
-                src += 'fi\n'
-                src += 'exit $RETVAL\n'
+        if monitor:
+            src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
+            src += 'func 2>"$TMPDIR/$JOB_ID.qtask.stderr" >"$TMPDIR/$JOB_ID.qtask.stdout"\n'
+            src += 'RETVAL=$?\n'
+            src += 'if [ "$FAILED" == "" ]; then\n'
+            src += '  "%s" "%s" stop $JOB_ID $RETVAL "$TMPDIR/$JOB_ID.qtask.stdout" "$TMPDIR/$JOB_ID.qtask.stderr"\n' % (qtask.QTASK_MON, monitor)
+            if 'stdout' in task.resources:
+                src += '  mv "$TMPDIR/$JOB_ID.qtask.stdout" "%s"\n' % task.resources['stdout']
             else:
-                src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
-                src += '"%s" "%s" stop $JOB_ID 0\n' % (qtask.QTASK_MON, monitor)
+                src += '  rm "$TMPDIR/$JOB_ID.qtask.stdout"\n'
+
+            if 'stderr' in task.resources:
+                src += '  mv "$TMPDIR/$JOB_ID.qtask.stderr" "%s"\n' % task.resources['stderr']
+            else:
+                src += '  rm "$TMPDIR/$JOB_ID.qtask.stderr"\n'
+        else:
+            src += 'func 2>"$TMPDIR/$JOB_ID.qtask.stderr" >"$TMPDIR/$JOB_ID.qtask.stdout"\n'
+            src += 'RETVAL=$?\n'
+            src += 'if [ "$FAILED" == "" ]; then\n'
+
+        src += '  if [ $RETVAL -ne 0 ]; then\n'
+        src += '    child_kill $JOB_ID\n'
+        if monitor:
+            src += '    "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
+        src += '  fi\n'
+
+        src += '  exit $RETVAL\n'
+        src += 'else\n'
+        src += '  # wait for SGE to kill the job for accounting purposes\n'
+        src += '  while [ 1 ]; do\n'
+        src += '    sleep 1\n'
+        src += '  done\n'
+        src += 'fi'
 
 
         if not dryrun:
