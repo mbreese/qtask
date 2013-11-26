@@ -74,7 +74,8 @@ Note: These values are all job-scheduler dependent
         return self.name
 
     def release(self):
-        self.runner.qrls(self.jobid)
+        if self.jobid:
+            self.runner.qrls(self.jobid)
 
 
 class _QTaskDirectWrapper(object):
