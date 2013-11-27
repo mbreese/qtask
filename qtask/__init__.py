@@ -375,7 +375,7 @@ class __Pipeline(object):
 
                     # submit
 
-                    if 'holding' in t.resources and t.resources['holding'] and 'force_first' in t.resouces and t.resources['force_first'] and not t.children:
+                    if 'holding' in t.resources and t.resources['holding'] and 'force_first' in t.resources and t.resources['force_first'] and not t.children:
                         # This is a front-loaded holding job meant to hold all the other jobs from starting
                         # until the entire pipeline has been submitted. If there aren't any children for
                         # this job, then there is no point in submitting it.
