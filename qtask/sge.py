@@ -71,21 +71,21 @@ class SGE(qtask.JobRunner):
 
         src += '#$ -notify\n'
         src += 'FAILED=""\n'
-        src += 'notify_stop() {\nchild_notify "SIGSTOP"\n}\n'
-        src += 'notify_kill() {\nchild_notify "SIGKILL"\n}\n'
-        src += 'child_notify() {\n'
+        src += 'notify_stop() {\ndepjob_notify "SIGSTOP"\n}\n'
+        src += 'notify_kill() {\ndepjob_notify "SIGKILL"\n}\n'
+        src += 'depjob_notify() {\n'
         src += '  FAILED="1"\n'
-        src += '  child_kill $JOB_ID\n'
+        src += '  depjob_kill $JOB_ID\n'
 
         if monitor:
             src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
             src += '  "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
 
         src += '}\n'
-        src += 'child_kill() {\n'
+        src += 'depjob_kill() {\n'
         src += '  local jid=""\n'
         src += '  for jid in $(qstat -f -j $1 | grep jid_successor_list | awk \'{print $2}\' | sed -e \'s/,/ /g\'); do\n'
-        src += '    child_kill $jid\n'
+        src += '    depjob_kill $jid\n'
         src += '    qdel $jid\n'
         src += '  done\n'
         src += '}\n'
@@ -116,7 +116,7 @@ class SGE(qtask.JobRunner):
             src += 'if [ "$FAILED" == "" ]; then\n'
 
         src += '  if [ $RETVAL -ne 0 ]; then\n'
-        src += '    child_kill $JOB_ID\n'
+        src += '    depjob_kill $JOB_ID\n'
         if monitor:
             src += '    "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
         src += '  fi\n'
@@ -145,8 +145,26 @@ class SGE(qtask.JobRunner):
         self.dry_run_cur_jobid += 1
         return 'dryrun.%s' % jobid, src
 
-    def qdel(self, *jobid):
-        subprocess.call(["qdel", ','.join([str(x) for x in jobid])])
+    def _find_job_deps(self, jobid):
+        output = subprocess.check_output(["qstat", "-f", "-j", jobid])
+        for line in output.split('\n'):
+            if line.startswith('jid_successor_list:'):
+                line = line[len('jid_successor_list:'):].strip()
+                for depid in line.split(','):
+                    yield depid
+        
 
-    def qrls(self, *jobid):
+    def qdel(self, jobid, deps=False):
+        del_list = set()
+        if type(jobid) == list:
+            for j in jobid:
+                del_list.add(j)
+                for depid in self._find_job_deps(j):
+                    del_list.add(depid)
+        else:
+            del_list.add(jobid)
+        
+        subprocess.call(["qdel", ','.join([str(x) for x in del_list])])
+
+    def qrls(self, jobid):
         subprocess.call(["qrls", ','.join([str(x) for x in jobid])])
