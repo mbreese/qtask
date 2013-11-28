@@ -145,26 +145,8 @@ class SGE(qtask.JobRunner):
         self.dry_run_cur_jobid += 1
         return 'dryrun.%s' % jobid, src
 
-    def _find_job_deps(self, jobid):
-        output = subprocess.check_output(["qstat", "-f", "-j", jobid])
-        for line in output.split('\n'):
-            if line.startswith('jid_successor_list:'):
-                line = line[len('jid_successor_list:'):].strip()
-                for depid in line.split(','):
-                    yield depid
-        
+    def qdel(self, *jobid):
+        subprocess.call(["qdel", ','.join([str(x) for x in jobid])])
 
-    def qdel(self, jobid, deps=False):
-        del_list = set()
-        if type(jobid) == list:
-            for j in jobid:
-                del_list.add(j)
-                for depid in self._find_job_deps(j):
-                    del_list.add(depid)
-        else:
-            del_list.add(jobid)
-        
-        subprocess.call(["qdel", ','.join([str(x) for x in del_list])])
-
-    def qrls(self, jobid):
+    def qrls(self, *jobid):
         subprocess.call(["qrls", ','.join([str(x) for x in jobid])])
