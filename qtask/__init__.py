@@ -13,7 +13,7 @@ Valid job resource/arguments:
     walltime    HH:MM:SS
     mem         3G
     holding     should this job be held until released by the user
-    mail        [e,a,ea]
+    mail        [e,a,ea,n]
     queue       "default"
     qos         QOS or SGE project to use
     wd          working directory (default to current)
@@ -30,7 +30,7 @@ Note: These values are all job-scheduler dependent
         self.name = name
         self.cmd = cmd
         self.skip = skip
-        self.resources = {'env': True, 'wd': os.path.abspath(os.curdir), 'force_first': False}
+        self.resources = {'env': True, 'wd': os.path.abspath(os.curdir), 'force_first': False, 'mail': 'ea'}
         if resources:
             for k in resources:
                 self.resources[k] = resources[k]
