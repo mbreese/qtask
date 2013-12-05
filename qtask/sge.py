@@ -111,7 +111,7 @@ class SGE(qtask.JobRunner):
             else:
                 src += '  rm "$TMPDIR/$JOB_ID.qtask.stderr"\n'
         else:
-            src += 'func 2>"$TMPDIR/$JOB_ID.qtask.stderr" >"$TMPDIR/$JOB_ID.qtask.stdout"\n'
+            src += 'func\n'
             src += 'RETVAL=$?\n'
             src += 'if [ "$FAILED" == "" ]; then\n'
 
