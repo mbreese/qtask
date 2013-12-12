@@ -3,6 +3,7 @@ import sys
 import qtask.monitor as monitor
 import re
 import subprocess
+import datetime
 
 # QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "bin", "qtask-mon"))
 QTASK_MON = "qtask-mon"  # rely on the $PATH
@@ -38,6 +39,7 @@ Note: These values are all job-scheduler dependent
         self.jobid = None
         self.runner = None
         self.basename = None
+        self.run_code = datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S.%f')
         self.depends = []
         self.children = []
 
@@ -392,7 +394,7 @@ class __Pipeline(object):
                             sys.stderr.write('-[%s - %s (%s)]---------------\n%s\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends]), src))
 
                         if mon and not dryrun:
-                            mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample)
+                            mon.submit(jobid, t.name, procs=t.resources['ppn'] if 'ppn' in t.resources else 1, deps=[x.jobid for x in t.depends], src=src, project=self.project, sample=self.sample, run=self.run_code)
                 
                 remaining = []
                 for t in self.tasks:

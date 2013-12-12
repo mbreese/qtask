@@ -66,7 +66,7 @@ class Monitor(object):
         pass
     def close(self):
         pass
-    def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None):
+    def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None, run=None):
         raise NotImplementedError
     def start(self, jobid, hostname=None):
         raise NotImplementedError

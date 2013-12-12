@@ -27,6 +27,7 @@ CREATE TABLE jobs (
     jobid TEXT,
     project TEXT,
     sample TEXT,
+    run TEXT,
     name TEXT,
     procs INTEGER,
     hostname TEXT,
@@ -75,8 +76,8 @@ CREATE TABLE job_deps (
             yield row
         cur.close()
 
-    def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None):
-        self.execute('INSERT INTO jobs (jobid, project, sample, name, procs, submit_time, src, abort_code) VALUES (?, ?, ?, ?, ?, ?, ?, 0)', (jobid, project, sample, jobname, procs, _now_ts(), src))
+    def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None, run=None):
+        self.execute('INSERT INTO jobs (jobid, project, sample, run, name, procs, submit_time, src, abort_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)', (jobid, project, sample, jobname, procs, _now_ts(), src))
         for d in deps:
             self.execute('INSERT INTO job_deps (jobid, parentid) VALUES (?,?)', (jobid, d))
 
