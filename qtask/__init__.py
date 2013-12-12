@@ -245,7 +245,7 @@ class BashRunner(JobRunner):
 
 @task(holding=True, force_first=True, walltime="00:00:10", mem='10M')
 def holding():
-    return ''
+    return '/bin/true'
 
 
 class __Pipeline(object):
