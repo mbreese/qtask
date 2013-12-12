@@ -302,7 +302,7 @@ class __Pipeline(object):
         self.sample = ''
         self._submitted_tasks = set()
         self.global_depends = []
-        self.run_code = datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S.%f')
+        self.run_code = '%s.%s' % (datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S.%f'), os.getpid())
 
     @property
     def monitor(self):
