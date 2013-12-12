@@ -39,7 +39,6 @@ Note: These values are all job-scheduler dependent
         self.jobid = None
         self.runner = None
         self.basename = None
-        self.run_code = datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S.%f')
         self.depends = []
         self.children = []
 
@@ -303,7 +302,7 @@ class __Pipeline(object):
         self.sample = ''
         self._submitted_tasks = set()
         self.global_depends = []
-
+        self.run_code = datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S.%f')
 
     @property
     def monitor(self):
