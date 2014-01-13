@@ -206,7 +206,7 @@ class BashRunner(JobRunner):
         self.script = '#!/bin/bash\n'
         self._jobid = 1
         self.tmpdir = tmpdir
-        self.uniq = '%s_%s' % (datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f'), os.getpid())
+        self.uniq = '%s_%s' % (datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f'), os.getpid())
 
     def qsub(self, task, monitor, dryrun=False):
         jobid = 'job_%s_%s' % (self._jobid, self.uniq)
