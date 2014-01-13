@@ -206,9 +206,10 @@ class BashRunner(JobRunner):
         self.script = '#!/bin/bash\n'
         self._jobid = 1
         self.tmpdir = tmpdir
+        self.uniq = datetime.time.time()
 
     def qsub(self, task, monitor, dryrun=False):
-        jobid = 'job.%s' % self._jobid
+        jobid = 'job.%s_%s' % (self._jobid, self.uniq)
         if monitor:
                 self.script += 'func_%s () {\n%s\nreturn $?\n}\n' % (jobid, task.cmd)
 
@@ -388,7 +389,7 @@ class __Pipeline(object):
                         t.jobid = jobid
                         t.runner = self.runner
                         self._submitted_tasks.add(t)
-                        sys.stdout.write('%s\n' % jobid)
+                        sys.stderr.write('%s\n' % jobid)
                         if verbose:
                             sys.stderr.write('-[%s - %s (%s)]---------------\n%s\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends]), src))
 
