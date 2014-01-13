@@ -269,11 +269,11 @@ class __Pipeline(object):
         #     self.config['runner'] = os.environ['QTASK_RUNNER']
 
         for env in os.environ:
-            if env[:5] == 'QTASK_':
+            if env[:6] == 'QTASK_':
                 if env[:12] == 'QTASK_RUNNER_':
                     runnerconf[env[12:].lower()] = os.environ[env]
                 else:
-                    self.config[env[5:].lower()] = os.environ[env]
+                    self.config[env[6:].lower()] = os.environ[env]
 
         if 'verbose' in self.config and self.config['verbose']:
             sys.stderr.write('QTask config:\n')
