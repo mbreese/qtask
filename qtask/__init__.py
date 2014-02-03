@@ -13,6 +13,7 @@ class QTask(object):
 Valid job resource/arguments:
     walltime    HH:MM:SS
     mem         3G
+    himem       12G  (used if the pipeline is configured for high memory usage)
     holding     should this job be held until released by the user
     mail        [e,a,ea,n]
     queue       "default"
@@ -130,6 +131,9 @@ def task(**task_args):
                 del kwargs['name']
             else:
                 name = func.__name__
+
+            if 'himem' in context and pipeline.himem:
+                context['mem'] = context['himem']
 
             task = QTask(cmd, name, context)
 
@@ -301,6 +305,7 @@ class __Pipeline(object):
         self.basejobname = ''
         self.project = ''
         self.sample = ''
+        self.himem = False
         self._submitted_tasks = set()
         self.global_depends = []
         self.run_code = '%s.%s' % (datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S.%f'), os.getpid())
