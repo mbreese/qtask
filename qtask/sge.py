@@ -71,23 +71,19 @@ class SGE(qtask.JobRunner):
 
         src += '#$ -notify\n'
         src += 'FAILED=""\n'
-        src += 'notify_stop() {\ndepjob_notify "SIGSTOP"\n}\n'
-        src += 'notify_kill() {\ndepjob_notify "SIGKILL"\n}\n'
-        src += 'depjob_notify() {\n'
+        src += 'notify_stop() {\nkill_deps_signal "SIGSTOP"\n}\n'
+        src += 'notify_kill() {\nkill_deps_signal "SIGKILL"\n}\n'
+        src += 'kill_deps_signal() {\n'
         src += '  FAILED="1"\n'
-        src += '  depjob_kill $JOB_ID\n'
+        src += '  kill_deps\n'
 
         if monitor:
             src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
-            src += '  "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
 
         src += '}\n'
-        src += 'depjob_kill() {\n'
-        src += '  local jid=""\n'
-        src += '  for jid in $(qstat -f -j $1 | grep jid_successor_list | awk \'{print $2}\' | sed -e \'s/,/ /g\'); do\n'
-        src += '    depjob_kill $jid\n'
-        src += '    qdel $jid\n'
-        src += '  done\n'
+
+        src += 'kill_deps() {\n'
+        src += '  qdel $(qstat -f -j $JOB_ID | grep jid_successor_list | awk \'{print $2}\' | sed -e \'s/,/ /g\')\n'
         src += '}\n'
 
         src += 'trap notify_stop SIGUSR1\n'
@@ -116,7 +112,7 @@ class SGE(qtask.JobRunner):
             src += 'if [ "$FAILED" == "" ]; then\n'
 
         src += '  if [ $RETVAL -ne 0 ]; then\n'
-        src += '    depjob_kill $JOB_ID\n'
+        src += '    kill_deps\n'
         if monitor:
             src += '    "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
         src += '  fi\n'
