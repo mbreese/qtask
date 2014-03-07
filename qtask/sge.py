@@ -120,9 +120,11 @@ class SGE(qtask.JobRunner):
 
         src += '  exit $RETVAL\n'
         src += 'else\n'
-        src += '  # wait for SGE to kill the job for accounting purposes\n'
-        src += '  while [ 1 ]; do\n'
+        src += '  # wait for SGE to kill the job for accounting purposes (max 120 sec)\n'
+        src += '  I=0\n'
+        src += '  while [ $I -lt 120 ]; do\n'
         src += '    sleep 1\n'
+        src += '    let "I=$I+1"\n'
         src += '  done\n'
         src += 'fi'
 
