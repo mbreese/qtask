@@ -394,7 +394,7 @@ class __Pipeline(object):
                         t.jobid = jobid
                         t.runner = self.runner
                         self._submitted_tasks.add(t)
-                        sys.stderr.write('%s\n' % jobid)
+                        sys.stdout.write('%s\n' % jobid)
                         if verbose:
                             sys.stderr.write('-[%s - %s (%s)]---------------\n%s\n' % (jobid, t.name, ','.join([d.jobid for d in t.depends]), src))
 

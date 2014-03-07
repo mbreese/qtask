@@ -36,7 +36,7 @@ class SGE(qtask.JobRunner):
             src += '#$ -pe %s %s\n' % (self.parallelenv, task.resources['ppn'])
 
         if task.depends or 'depends' in task.resources:
-            depids = [t.jobid for t in task.depends]
+            depids = [t.jobid for t in task.depends if t.jobid]
             if 'depends' in task.resources:
                 depids.extend(task.resources['depends'].split(','))
 
