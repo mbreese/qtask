@@ -10,7 +10,7 @@ if os.path.exists(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'
     sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 
 import qtask
-
+from qtask.pipeline import direct_task_wrapper
 
 def usage():
     print __doc__
@@ -80,8 +80,8 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False, deps=[]):
         else:
             jobname = '%s' % (cmd_ar[0].replace('/','_'))
 
-        task = qtask.QTask(' '.join(cmd_ar), jobname, resources)
-        task.direct_depid(deps)
+        task = qtask.QTask(src=' '.join(cmd_ar), taskname=jobname, **resources)
+        task.depends_on.extend([direct_task_wrapper(dep) for dep in deps])                
         qtask.pipeline.add_task(task)
 
 
@@ -106,8 +106,8 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False, deps=[]):
                     job_resources[k] = val
 
 
-            task = qtask.QTask(' '.join(cmd_repl), jobname, job_resources)
-            task.direct_depid(deps)
+            task = qtask.QTask(src=' '.join(cmd_repl), taskname=jobname, **job_resources)
+            task.depends_on.extend([direct_task_wrapper(dep) for dep in deps])                
 
             if 'sample' in resources:
                 qtask.pipeline.sample = _var_repl(resources['sample'], fname)

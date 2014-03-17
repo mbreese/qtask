@@ -40,8 +40,6 @@ class Lock(object):
             try:
                 os.mkdir(self.path)
                 self.__locked = True
-                # global __active_locks
-                # __active_locks.add(self)
                 return
             except OSError:
                 time.sleep(.1)
@@ -52,13 +50,6 @@ class Lock(object):
         if self.__locked:
             self.__locked = False
             os.rmdir(self.path)
-    #         global __active_locks
-    #         __active_locks.remove(self)
-
-    # def _abort(self):
-    #     if self.__locked:
-    #         self.__locked = False
-    #         os.rmdir(self.path)
 
 
 class Monitor(object):

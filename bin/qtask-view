@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+'''
+View the status of tracked/monitored jobs
+
+This will produce a summary report of job status, elapsed time, working time,
+etc... For project or sample level reports, this will be a summary of all
+associated jobs. For a single job, this will be a detailed report.
+
+'''
+
+import sys
+import os
+
+if os.path.exists(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'qtask')):
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+
+import qtask.monitor
+
+
+def usage():
+    print __doc__
+    print """Usage: qtask-view monitor-uri {opts}
+
+Possible monitor URI formats:
+    file://filename.txt
+    sqlite://sqlite.db
+    http://hostname/qtask-mon
+
+Options:
+    -p    Project
+    -s    Sample
+    -n    Job name
+    -j    Job ID
+
+    -p, -s, and -n will accept wildcards/globs
+
+"""
+    sys.exit(1)
+
+if __name__ == '__main__':
+    uri = None
+
+    project = None
+    sample = None
+    jobname = None
+    jobid = None
+
+    last = None
+
+    for arg in sys.argv[1:]:
+        if last == '-p':
+            project = arg
+            last = None
+        elif last == '-s':
+            sample = arg
+            last = None
+        elif last == '-n':
+            jobname = arg
+            last = None
+        elif last == '-j':
+            jobid = arg
+            last = None
+        elif arg in ['-p', '-s', '-n', '-j']:
+            last = arg
+        elif not uri:
+            uri = arg
+
+    if not uri:
+        usage()
+
+    mon = qtask.monitor.load_monitor(uri)
+    if not mon:
+        sys.stderr.write("Could not open monitor target: %s!\n" % uri)
+        usage()
+
+
+    try:
+        if jobid:
+            view_job(mon, jobid)
+        else:
+            view_multiple(mon, project, sample, jobname, jobid)
+    finally:
+        mon.close()
