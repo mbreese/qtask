@@ -12,24 +12,16 @@ def example(infile):
     qtask.pipeline.project = 'World domination'
     qtask.pipeline.sample = infile
 
-    hold = holding()
-
-    t1 = task1('foo').deps(hold)
-    t2 = task2('bar').deps(t1)
-    t2.name="quux2"
+    output = task1(infile)
+    out2 = task2(output)
 
     for arg in 'abcd':
         qtask.pipeline.basejobname = arg
-        t3 = task3(arg).deps(t2)
-        task4('baz').deps(t3)
+        out3 = task3(out2)
+        task4(out3)
 
     qtask.pipeline.submit(verbose=True)
-    hold.release()
 
-
-@task(holding=True, walltime='00:00:10')
-def holding():
-    return ''
 
 @task()
 def task1(infile):

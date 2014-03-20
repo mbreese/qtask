@@ -164,7 +164,7 @@ class QPipeline(object):
                 if task.option('hold'):
                     self.runner.qrls(task._jobid)
 
-            # victoire! reset pipeline and release the hounds!
+            # reset pipeline and release the hounds!
             self._reset()
 
         except Exception, e:
