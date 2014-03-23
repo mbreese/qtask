@@ -30,11 +30,23 @@ class SGE(qtask.runner.JobRunner):
         if task.option('walltime'):
             src += '#$ -l h_rt=%s\n' % self._calc_time(task.option('walltime'))
 
-        if task.option('mem'):
-            src += '#$ -l h_vmem=%s\n' % task.option('mem')
+        if task.option('procs'):
+            src += '#$ -pe %s %s\n' % (self.parallelenv, task.option('procs'))
 
-        if task.option('ppn'):
-            src += '#$ -pe %s %s\n' % (self.parallelenv, task.option('ppn'))
+        if task.option('mem'):
+            if task.option('procs'):
+                procs = int(task.option('procs'))
+
+                mem = task.option('mem')
+                mem_num = ''
+                while mem[0] in '0123456789.':
+                    mem_num += mem[0]
+                    mem = mem[1:]
+
+                src += '#$ -l h_vmem=%s%s\n' % (float(mem_num) / procs, mem)
+
+            else:
+                src += '#$ -l h_vmem=%s\n' % task.option('mem')
 
         if task.depends_on:
             depids = [t._jobid for t in task.depends_on]
@@ -91,7 +103,7 @@ class SGE(qtask.runner.JobRunner):
         src += 'trap notify_stop SIGUSR1\n'
         src += 'trap notify_kill SIGUSR2\n'
     
-        src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.src
+        src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.cmd
 
         if monitor:
             src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)

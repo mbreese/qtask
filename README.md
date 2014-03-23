@@ -19,7 +19,6 @@ Here is a minimal example that will gzip compress a file:
 			'cmd': 'gzip %s' % filename,
 			'output': '%s.gz' % filename
 		}
-	}
 
 This ultimately yields a `FutureFile` that can be used any place where the output filename would otherwise be used. When that FutureFile is given as an argument to another `@qtask.task` method, that job will be dynamically added to the new job as a dependency. With this simple construct, complex workflows and pipelines are easy to assemble.
 
@@ -31,18 +30,17 @@ For example, here is another task that will calculate the MD5 sum of a file.
 			'cmd': 'md5 %s > %s.md5' % (filename, filename),
 			'output': '%s.md5' % filename
 		}
-	}
 
 
 And finally, here is how you can combine both functions together to setup a pipeline.
 
 	def pipeline(input_filename):
-		qtask.pipeline.init()
+		qtask.init()
 
 		gzfile = gzip(input_filename)
 		md5sum(gzfile)
 
-		qtask.pipeline.submit()
+		qtask.submit()
 
 This simple pipeline performs two tasks: gzip a file and calculate an MD5 hash of the compressed file. If the input file is named `foo.txt`, there will be two new files created: `foo.txt.gz`, and `foo.txt.gz.md5`. When the `qtask.pipeline.submit()` method is called, two jobs will be submitted to the job scheduler: the gzip job and the md5sum job. The md5sum job will list the gzip job as a dependency, so the correct processing order will be respected.
 
@@ -73,7 +71,6 @@ Any of these can be set as part of the `@qtask.task` decoration. For example, le
 			'cmd': 'gzip %s' % filename,
 			'output': '%s.gz' % filename
 		}
-	}
 
 
 Or like this:
@@ -85,7 +82,6 @@ Or like this:
 			'output': '%s.gz' % filename,
 			'walltime': '2:00:00'
 		}
-	}
 
 
 ## Extras

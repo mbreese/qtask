@@ -22,9 +22,10 @@ class QTaskProperties(object):
             self._values[k.lower()] = _config_value(val)
 
     def load_file(self, path):
-        for line in open(path):
-            k,v = line.strip().split('=')
-            self._values[k.lower().strip()] = _config_value(v.strip())
+        if os.path.exists(path):
+            for line in open(path):
+                k,v = line.strip().split('=')
+                self._values[k.lower().strip()] = _config_value(v.strip())
 
     def load_env(self):
         for env in os.environ:
@@ -43,7 +44,7 @@ class QTaskProperties(object):
                     vals[k] = self._values[k]
         return vals
 
-    def haskey(self, k):
+    def __contains__(self, k):
         kl = k.lower()
         return kl in self._values
 
@@ -52,6 +53,9 @@ class QTaskProperties(object):
         if kl in self._values:
             return self._values[kl]
         return default
+
+    def __getitem__(self, k):
+        return self.get(k)
 
 
 def _config_value(val):

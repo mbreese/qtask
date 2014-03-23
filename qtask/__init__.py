@@ -76,7 +76,7 @@ Note: These values are all job-scheduler dependent
         return self.fullname
 
 
-class FutureFile(str):
+class FutureFile(object):
     def __init__(self, fname, provided_by):
         self.fname = fname
         self.provided_by = provided_by
@@ -97,8 +97,8 @@ class task(object):
             else:
                 config_key = '%s.%s' % (func.__name__, k.replace('_', '.'))
 
-            if pipeline.config.haskey(config_key):
-                self.default_kwargs[k] = pipeline.config.get(config_key)
+            if config_key in config:
+                self.default_kwargs[k] = config[config_key]
 
         def wrapped_func(*args, **kwargs):
             args1 = []
@@ -122,19 +122,19 @@ class task(object):
                 else:
                     kwargs1[k] = kwargs[k]
 
-            # Examine the method's arguments - if any of them have a setting in pipeline.config,
+            # Examine the method's arguments - if any of them have a setting in config,
             # inject that config'd value here
 
             func_args = inspect.getargspec(func)
-            for argname in func_args:
+            for argname in func_args[0]:
                 if argname.startswith('auto_'):
                     if self.config_prefix:
                         config_key = '%s.%s' % (self.config_prefix, argname[5:].replace('_', '.'))
                     else:
                         config_key = '%s.%s' % (func.__name__, argname[5:].replace('_', '.'))
                     
-                    if pipeline.config.haskey(config_key):
-                        kwargs1[argname] = pipeline.config.get(k)
+                    if config.haskey(config_key):
+                        kwargs1[argname] = config.get(k)
 
             # if any of the dependencies need to run, 
             # then if the job accepts a 'force' argument, set
@@ -161,7 +161,7 @@ class task(object):
                 result['taskname'] = func.__name__
 
             task = QTask(depends_on=deps, **result)
-            pipeline.add_task(task)
+            _pipeline.add_task(task)
 
             # For any 'outputs', assume it is a filename and 
             # replace the string with a FutureFile.
@@ -179,5 +179,12 @@ class task(object):
         return wrapped_func
 
 
+import qtask.properties
+config = qtask.properties.QTaskProperties(initial={'qtask.runner': 'bash', 'qtask.monitor': None, 'qtask.holding': True})
+
+
 import qtask.pipeline
-pipeline = qtask.pipeline.QPipeline()
+_pipeline = qtask.pipeline.Pipeline()
+
+def submit(*args, **kwargs):
+    _pipeline.submit(*args, **kwargs)

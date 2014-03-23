@@ -19,7 +19,7 @@ class BashRunner(qtask.runner.JobRunner):
     def qsub(self, task, monitor, dryrun=False):
         jobid = 'job_%s_%s' % (self._jobid, self.uniq)
         if monitor:
-            self.script += 'func_%s () {\n%s\nreturn $?\n}\n' % (jobid, task.src)
+            self.script += 'func_%s () {\n%s\nreturn $?\n}\n' % (jobid, task.cmd)
 
             self.script += '"%s" "%s" start %s\n' % (qtask.QTASK_MON, monitor, jobid)
             self.script += 'func_%s 2>"%s/%s.qtask.stderr" >"/tmp/%s.qtask.stdout"\n' % (jobid, self.tmpdir, jobid, jobid)
@@ -38,7 +38,7 @@ class BashRunner(qtask.runner.JobRunner):
 
             self.script += 'if [ "$RETVAL" -ne 0 ]; then\n echo "Error processing job: %s"\n exit $RETVAL\nfi\n' % jobid
         else:
-            self.script += '%s\n' % task.src
+            self.script += '%s\n' % task.cmd
 
         self._jobid += 1
         return jobid, ''

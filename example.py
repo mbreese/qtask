@@ -5,48 +5,26 @@ example
 
 import qtask
 
-from qtask import task
+@qtask.task()
+def gzip(filename):
+    return {
+        'cmd': 'gzip %s' % filename,
+        'output': '%s.gz' % filename
+    }
 
-def example(infile):
-    qtask.pipeline.monitor = "sqlite://foo.db"
-    qtask.pipeline.project = 'World domination'
-    qtask.pipeline.sample = infile
+@qtask.task()
+def md5sum(filename):
+    return {
+        'cmd': 'md5 %s > %s.md5' % (filename, filename),
+        'output': '%s.md5' % filename
+    }
 
-    output = task1(infile)
-    out2 = task2(output)
+def pipeline(input_filename):
+    gzfile = gzip(input_filename)
+    md5sum(gzfile)
 
-    for arg in 'abcd':
-        qtask.pipeline.basejobname = arg
-        out3 = task3(out2)
-        task4(out3)
+    qtask.submit(verbose=True)
 
-    qtask.pipeline.submit(verbose=True)
-
-
-@task()
-def task1(infile):
-    cmd = 'echo "%s"' % infile
-    return cmd
-
-@task()
-def task2(outfile):
-    cmd = '''
-# longer command/bash script
-echo "%s"
-datetime
-hostname
-''' % outfile
-
-    return cmd
-
-@task()
-def task3(arg):
-    cmd = 'echo "%s, %s"' % (arg, arg)
-    return cmd
-
-@task()
-def task4(arg):
-    return str(arg)
 
 if __name__ == '__main__':
-    example('filename.fastq')
+    pipeline('filename.foo')

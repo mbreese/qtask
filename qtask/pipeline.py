@@ -17,30 +17,29 @@ def direct_task_wrapper(jobid):
     return task
 
 
-class QPipeline(object):
+class Pipeline(object):
     def __init__(self):
         self._pipeline_id = '%s-%s' % (socket.gethostname(), datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S'))
         self._run_num = 0
         self._reset()
-        self.config = qtask.properties.QTaskProperties(initial={'qtask.runner': 'sge', 'qtask.monitor': None, 'qtask.holding': True})
 
-        if self.config.get('qtask.runner') == 'sge':
+        if qtask.config.get('qtask.runner') == 'sge':
             from qtask.runner.sge import SGE
-            self.runner = SGE(**self.config.get_prefix('qtask.runner.sge', replace=True))
-        elif self.config.get('qtask.runner') == 'pbs':
+            self.runner = SGE(**qtask.config.get_prefix('qtask.runner.sge', replace=True))
+        elif qtask.config.get('qtask.runner') == 'pbs':
             from qtask.runner.pbs import PBS
-            self.runner = PBS(**self.config.get_prefix('qtask.runner.pbs', replace=True))
-        elif self.config.get('qtask.runner') == 'bash':
+            self.runner = PBS(**qtask.config.get_prefix('qtask.runner.pbs', replace=True))
+        elif qtask.config.get('qtask.runner') == 'bash':
             from qtask.runner.bash import BashRunner
-            self.runner = BashRunner(**self.config.get_prefix('qtask.runner.bash', replace=True))
+            self.runner = BashRunner(**qtask.config.get_prefix('qtask.runner.bash', replace=True))
         else:
-            raise RuntimeError("Unknown runner: %s (valid: sge, pbs, bash)" % self.config.get('qtask.runner'))
+            raise RuntimeError("Unknown runner: %s (valid: sge, pbs, bash)" % qtask.config.get('qtask.runner'))
 
     @property
     def pipeline_id(self):
         return self._pipeline_id
 
-    def init(self):
+    def _reset(self):
         self.project = ''
         self.sample = ''
         self.tasks = []
@@ -55,14 +54,14 @@ class QPipeline(object):
 
     @property
     def monitor(self):
-        return self.config.get('qtask.monitor')
+        return qtask.config.get('qtask.monitor')
 
     # @monitor.setter
     # def monitor(self, val):
     #     valid = ["file://", "sqlite://", "http://"]
     #     for v in valid:
     #         if val[:len(v)] == v:
-    #             self.config['monitor'] = val
+    #             qtask.config['monitor'] = val
     #             return
 
     #     raise RuntimeError("Unknown monitor type: %s!" % val)
@@ -90,8 +89,8 @@ class QPipeline(object):
 
     def submit(self, verbose=False, dryrun=False):
         mon = None
-        if not dryrun and self.config['monitor']:
-            mon = qtask.monitor.load_monitor(self.config['monitor'])
+        if not dryrun and qtask.config['monitor']:
+            mon = qtask.monitor.load_monitor(qtask.config['monitor'])
             qtask.check_path(qtask.QTASK_MON)
 
         try:
@@ -112,7 +111,7 @@ class QPipeline(object):
                     if not deps_satisfied:
                         continue
 
-                    jobid, src = self.runner.qsub(task, monitor=self.config['monitor'], dryrun=dryrun)
+                    jobid, src = self.runner.qsub(task, monitor=qtask.config['monitor'], dryrun=dryrun)
                     task._jobid = jobid
                     sys.stderr.write('%s\n' % jobid)
                     if verbose:
@@ -131,14 +130,14 @@ class QPipeline(object):
                 if task.option('hold'):
                     self.runner.qrls(task._jobid)
 
-            # reset pipeline and release the hounds!
-            self._reset()
-
         except Exception, e:
             print e
             # there was a problem...
             self.abort(mon)
             raise e
+
+        finally:
+            self._reset()
 
     def abort(self, monitor=None):
         for task in self.tasks:
