@@ -1,14 +1,14 @@
-import os
 import sys
+import socket
 import datetime
 import re
 import qtask
 import qtask.monitor
-
+import qtask.properties
 
 @qtask.task(time='00:00:10', mem='10M', hold=True)
 def holding():
-    return { 'src': '/bin/true' }
+    return { 'cmd': '/bin/true' }
 
 
 def direct_task_wrapper(jobid):
@@ -17,69 +17,36 @@ def direct_task_wrapper(jobid):
     return task
 
 
-def config_value(val):
-    if val.upper() in ['T', 'TRUE']:
-        return True
-    if val.upper() in ['F', 'FALSE']:
-        return False
-
-    try:
-        intval = int(val)
-        return intval
-    except:
-        return val
-
-
 class QPipeline(object):
     def __init__(self):
+        self._pipeline_id = '%s-%s' % (socket.gethostname(), datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S'))
+        self._run_num = 0
         self._reset()
-        self._read_config()
+        self.config = qtask.properties.QTaskProperties(initial={'qtask.runner': 'sge', 'qtask.monitor': None, 'qtask.holding': True})
 
-    def _read_config(self):
-        # config values:
-        # runner, monitor (URI)
-        self.config = {'runner': 'sge', 'monitor': None, 'holding': True}
-        runnerconf = {}
-
-        # read config from ~/.qtaskrc if available
-        if os.path.exists(os.path.expanduser('~/.qtaskrc')):
-            with open(os.path.expanduser('~/.qtaskrc')) as f:
-                for line in f:
-                    k,v = line.strip().split('=')
-                    if k[:7].lower() == 'runner.':
-                        runnerconf[k[7:].lower().strip()] = config_value(v.strip())
-                    self.config[k.lower()] = config_value(v.strip())
-
-        # read from environ
-        for env in os.environ:
-            if env[:6] == 'QTASK_':
-                if env[:12] == 'QTASK_RUNNER_':
-                    runnerconf[env[12:].lower()] = os.environ[env]
-                else:
-                    self.config[env[6:].lower()] = os.environ[env]
-
-        # setup the runner
-        # Available runners: SGE, Bash
-        # Future runners: PBS, QTask-builtin
-
-        if self.config['runner'] == 'sge':
+        if self.config.get('qtask.runner') == 'sge':
             from qtask.runner.sge import SGE
-            self.runner = SGE(**runnerconf)
-        elif self.config['runner'] == 'pbs':
+            self.runner = SGE(**self.config.get_prefix('qtask.runner.sge', replace=True))
+        elif self.config.get('qtask.runner') == 'pbs':
             from qtask.runner.pbs import PBS
-            self.runner = PBS(**runnerconf)
-        elif self.config['runner'] == 'bash':
+            self.runner = PBS(**self.config.get_prefix('qtask.runner.pbs', replace=True))
+        elif self.config.get('qtask.runner') == 'bash':
             from qtask.runner.bash import BashRunner
-            self.runner = BashRunner(**runnerconf)
+            self.runner = BashRunner(**self.config.get_prefix('qtask.runner.bash', replace=True))
         else:
-            raise RuntimeError("Unknown runner: %s (valid: sge, pbs, bash)" % self.config['qtype'])
+            raise RuntimeError("Unknown runner: %s (valid: sge, pbs, bash)" % self.config.get('qtask.runner'))
 
-    def _reset(self):
+    @property
+    def pipeline_id(self):
+        return self._pipeline_id
+
+    def init(self):
         self.project = ''
         self.sample = ''
         self.tasks = []
         self.global_depends = []
-        self.run_code = '%s.%s' % (datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S.%f'), os.getpid())
+        self._run_num ++ 1
+        self.run_code = '%s.%s' % (self.pipeline_id, self._run_num)
 
     def add_global_depend(self, *depids):
         # These should be jobid's from the scheduler
@@ -88,17 +55,17 @@ class QPipeline(object):
 
     @property
     def monitor(self):
-        return self.config['monitor']
+        return self.config.get('qtask.monitor')
 
-    @monitor.setter
-    def monitor(self, val):
-        valid = ["file://", "sqlite://", "http://"]
-        for v in valid:
-            if val[:len(v)] == v:
-                self.config['monitor'] = val
-                return
+    # @monitor.setter
+    # def monitor(self, val):
+    #     valid = ["file://", "sqlite://", "http://"]
+    #     for v in valid:
+    #         if val[:len(v)] == v:
+    #             self.config['monitor'] = val
+    #             return
 
-        raise RuntimeError("Unknown monitor type: %s!" % val)
+    #     raise RuntimeError("Unknown monitor type: %s!" % val)
 
     def add_task(self, task):
         # alter the job name to be unique to this job/sample/project
