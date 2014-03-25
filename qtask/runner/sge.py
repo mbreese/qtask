@@ -24,7 +24,6 @@ while read -r line; do
     %s account "$JID" "$KEY" "$VALUE"
 done < .tmp.acct.$JID
 rm .tmp.acct.$JID
-
 '''
 
 class SGE(qtask.runner.JobRunner):
