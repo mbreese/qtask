@@ -12,7 +12,7 @@ class SGE(qtask.runner.JobRunner):
         self.parallelenv = parallelenv
         self.account = account
         self.tmpdir = tmpdir
-        qtask.JobRunner.__init__(self, *args, **kwargs)
+        qtask.runner.JobRunner.__init__(self, *args, **kwargs)
 
 
     def qsub(self, task, monitor, dryrun=False):
@@ -50,8 +50,8 @@ class SGE(qtask.runner.JobRunner):
 
         if task.depends_on:
             depids = [t._jobid for t in task.depends_on]
-            if task.options('depends'):
-                depids.extend(task.options('depends').split(','))
+            if task.option('depends'):
+                depids.extend(task.option('depends').split(','))
 
             if depids:
                 src += '#$ -hold_jid %s\n' % ','.join(depids)

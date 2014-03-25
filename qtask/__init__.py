@@ -1,18 +1,6 @@
+import sys
 import os
 import inspect
-import subprocess
-
-__path_cache = set()
-def check_path(prog):
-    if prog in __path_cache:
-        return True
-
-    with open('/dev/null', 'w') as devnull:
-        if subprocess.call("which %s" % prog, stderr=devnull, stdout=devnull, shell=True) != 0:
-            raise RuntimeError("Missing required program from $PATH: %s\n\n" % prog)
-
-    __path_cache.add(prog)
-    return True
 
 
 # QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "bin", "qtask-mon"))
@@ -82,7 +70,8 @@ class FutureFile(object):
         self.provided_by = provided_by
 
     def __repr__(self):
-        return 'Future: %s (%s)' % (self.fullname, self.provided_by.fullname if self.provided_by is not None else '*no job*')
+        return self.fname
+        # return 'Future: %s (%s)' % (self.fname, self.provided_by.fullname if self.provided_by is not None else '*no job*')
 
 
 class task(object):
@@ -91,16 +80,32 @@ class task(object):
         self.default_kwargs = default_kwargs
 
     def __call__(self, func):
+        config_values = {}
+
         for k in self.default_kwargs:
-            if self.config_prefix:
-                config_key = '%s.%s' % (self.config_prefix, k.replace('_', '.'))
+            if self.config_prefix is not None:
+                if self.config_prefix:
+                    config_key = '%s.%s' % (self.config_prefix, k.replace('_', '.'))
+                else:
+                    config_key = '%s' % (k.replace('_', '.'),)
+
             else:
                 config_key = '%s.%s' % (func.__name__, k.replace('_', '.'))
 
             if config_key in config:
                 self.default_kwargs[k] = config[config_key]
+                config_values[k] = config_key
+
 
         def wrapped_func(*args, **kwargs):
+            log.debug('FUNCTION: %s' % func.__name__)
+
+            for k in self.default_kwargs:
+                if k in config_values:
+                    log.trace('QTASK-ARGS config(%s) %s %s', config_values[k], k, self.default_kwargs[k])
+                else:
+                    log.trace('QTASK-ARGS default %s %s', k, self.default_kwargs[k])
+
             args1 = []
             kwargs1 = {}
             deps = []
@@ -108,10 +113,21 @@ class task(object):
             # Look at arguments, replace and FutureFile's with their fnames
             # and add the provided_by to the dependency list
 
-            for arg in args:
+            for i, arg in enumerate(args):
                 if type(arg) == FutureFile:
                     args1.append(arg.fname)
                     deps.append(arg.provided_by)
+                    log.trace('FUNCARG FutureFile %s %s (%s)', i, arg.fname, arg.provided_by)
+                elif type(arg) == list:
+                    l = []
+                    for item in arg:
+                        if type(item) == FutureFile:
+                            log.trace('FUNCARG FutureFile %s(list) %s (%s)', i, item.fname, item.provided_by)
+                            l.append(item.fname)
+                            deps.append(item.provided_by)
+                        else:
+                            l.append(item)
+                    args1.append(l)
                 else:
                     args1.append(arg)
 
@@ -119,6 +135,17 @@ class task(object):
                 if type(kwargs[k]) == FutureFile:
                     kwargs1[k] = kwargs[k].fname
                     deps.append(kwargs[k].provided_by)
+                    log.trace('FUNCARG FutureFile %s %s (%s)', k, kwargs[k].fname, kwargs[k].provided_by)
+                elif type(kwargs[k]) == list:
+                    l = []
+                    for item in kwargs[k]:
+                        if type(item) == FutureFile:
+                            l.append(item.fname)
+                            deps.append(item.provided_by)
+                            log.trace('FUNCARG FutureFile %s(list) %s (%s)', k, item.fname, item.provided_by)
+                        else:
+                            l.append(item)
+                    kwargs1[k] = l
                 else:
                     kwargs1[k] = kwargs[k]
 
@@ -126,15 +153,35 @@ class task(object):
             # inject that config'd value here
 
             func_args = inspect.getargspec(func)
-            for argname in func_args[0]:
-                if argname.startswith('auto_'):
+            if func_args.defaults:
+                arg_default_offset = len(func_args.args) - len(func_args.defaults)
+            else:
+                arg_default_offset = len(func_args.args)
+
+            for i, argname in enumerate(func_args.args):
+                if argname[:7] == 'global_':
+                    config_key = '%s' % (argname[7:].replace('_', '.'))
+                elif self.config_prefix is not None:
                     if self.config_prefix:
-                        config_key = '%s.%s' % (self.config_prefix, argname[5:].replace('_', '.'))
+                        config_key = '%s.%s' % (self.config_prefix, argname.replace('_', '.'))
                     else:
-                        config_key = '%s.%s' % (func.__name__, argname[5:].replace('_', '.'))
-                    
-                    if config.haskey(config_key):
-                        kwargs1[argname] = config.get(k)
+                        config_key = '%s' % (argname.replace('_', '.'),)
+                else:
+                    config_key = '%s.%s' % (func.__name__, argname.replace('_', '.'))
+                
+                if config_key in config:
+                    kwargs1[argname] = config[config_key]
+                    log.trace("FUNCARG config(%s) %s %s ", config_key, argname, kwargs1[argname])
+                else:
+                    if i < len(args1):
+                        log.trace("FUNCARG arg(%s) %s %s ", i, argname, args1[i])
+                    elif argname in kwargs1:
+                        log.trace("FUNCARG kwarg %s %s ", argname, kwargs1[argname])
+                    elif i >= arg_default_offset:
+                        log.trace("FUNCARG default %s %s ", argname, func_args.defaults[i - arg_default_offset])
+                    else:
+                        log.trace("FUNCARG missing %s", argname)
+
 
             # if any of the dependencies need to run, 
             # then if the job accepts a 'force' argument, set
@@ -147,44 +194,82 @@ class task(object):
             
             # if we have any dependencies that are going to run, we need to run too...
             # if the method has a 'force' argument, set that to True.
-            if 'auto_force' in func_args[0]:
-                kwargs1['auto_force'] = force
+            if 'dep_force' in func_args.args:
+                kwargs1['dep_force'] = force
+
+            log.debug('DEP-FORCE: %s' , force)
 
             # Run the wrapped function
             result = func(*args1, **kwargs1)
 
-            for k in self.default_kwargs:
-                if k not in result:
-                    result[k] = self.default_kwargs[k]
+            if result:
+                for k in self.default_kwargs:
+                    if k not in result:
+                        result[k] = self.default_kwargs[k]
 
-            if not 'taskname' in result:
-                result['taskname'] = func.__name__
+                if not 'taskname' in result:
+                    result['taskname'] = func.__name__
 
-            task = QTask(depends_on=deps, **result)
-            _pipeline.add_task(task)
+                task = QTask(depends_on=deps, **result)
+                _get_pipeline().add_task(task)
 
-            # For any 'outputs', assume it is a filename and 
-            # replace the string with a FutureFile.
+                for k in result:
+                    log.debug("RESULT: %s => %s" , k, result[k])
 
-            if 'output' in result:
-                if type(result['output']) == list:
-                    return dict((k,FutureFile(result['output'][k], task)) for k in result['output'])
-                    return [FutureFile(x, provided_by=task) for x in result['output']]
-                elif type(result['output']) == dict:
-                    return dict((k,FutureFile(result['output'][k], provided_by=task)) for k in result['output'])
-                elif type(result['output']) == tuple:
-                    return tuple([FutureFile(x, provided_by=task) for x in result['output']])
-                return FutureFile(result['output'], provided_by=task)
-            return FutureFile('', provided_by=task)
+                if 'requires' in result:
+                    for prog in [x.strip() for x in result['requires'].split(',')]:
+                        try:
+                            version = qtask.version.find_version(prog)
+                            log.debug('VERSION: %s (%s)', prog, version)
+                        except:
+                            log.fatal("MISSING PROGRAM: %s", prog)
+                            sys.exit(1)
+
+                # For any 'outputs', assume it is a filename and 
+                # replace the string with a FutureFile.
+
+                if 'output' in result:
+                    if type(result['output']) == list:
+                        result = [FutureFile(x, provided_by=task) for x in result['output']]
+                    elif type(result['output']) == dict:
+                        result = dict((k,FutureFile(result['output'][k], provided_by=task)) for k in result['output'])
+                    elif type(result['output']) == tuple:
+                        result = tuple([FutureFile(x, provided_by=task) for x in result['output']])
+                    else:
+                        result = FutureFile(result['output'], provided_by=task)
+                else:
+                    result = FutureFile('', provided_by=task)
+            log.trace("END-FUNCTION")
+            return result
+
         return wrapped_func
 
-
 import qtask.properties
-config = qtask.properties.QTaskProperties(initial={'qtask.runner': 'bash', 'qtask.monitor': None, 'qtask.holding': True})
+config = qtask.properties.QTaskProperties(initial={
+    'qtask.log': './run.log',
+    'qtask.runner': 'bash', 
+    'qtask.monitor': None, 
+    'qtask.holding': True
+    })
 
+import qtask.runlog
+log = qtask.runlog.RunLogger()
 
 import qtask.pipeline
-_pipeline = qtask.pipeline.Pipeline()
+
+_pipeline = None
+def _get_pipeline():
+    global _pipeline
+    if not _pipeline:
+        config.lock()
+        config.log()
+        _pipeline = qtask.pipeline.Pipeline()
+    return _pipeline
+
+def set_sample(name):
+    _get_pipeline().sample = name
 
 def submit(*args, **kwargs):
-    _pipeline.submit(*args, **kwargs)
+    log.info("SUBMIT JOBS")
+    _get_pipeline().submit(*args, **kwargs)
+    log.info("SUBMIT DONE")

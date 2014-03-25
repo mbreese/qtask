@@ -6,11 +6,6 @@ import qtask
 import qtask.monitor
 import qtask.properties
 
-@qtask.task(time='00:00:10', mem='10M', hold=True)
-def holding():
-    return { 'cmd': '/bin/true' }
-
-
 def direct_task_wrapper(jobid):
     task = qtask.QTask()
     task._jobid = jobid
@@ -21,40 +16,66 @@ class Pipeline(object):
     def __init__(self):
         self._pipeline_id = '%s-%s' % (socket.gethostname(), datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S'))
         self._run_num = 0
+        self.project = qtask.config['project']
+        qtask.log.info('PIPELINE_ID: %s', self._pipeline_id)
+        qtask.log.info('PROJECT: %s', self.project)
+
         self._reset()
 
-        if qtask.config.get('qtask.runner') == 'sge':
+        if 'qtask.runner' not in qtask.config:
+            raise RuntimeError("Missing runner: %s (valid: sge, pbs, bash)" % qtask.config['qtask.runner'])
+
+        if qtask.config['qtask.runner'] == 'sge':
             from qtask.runner.sge import SGE
             self.runner = SGE(**qtask.config.get_prefix('qtask.runner.sge', replace=True))
-        elif qtask.config.get('qtask.runner') == 'pbs':
+        elif qtask.config['qtask.runner'] == 'pbs':
             from qtask.runner.pbs import PBS
             self.runner = PBS(**qtask.config.get_prefix('qtask.runner.pbs', replace=True))
-        elif qtask.config.get('qtask.runner') == 'bash':
+        elif qtask.config['qtask.runner'] == 'bash':
             from qtask.runner.bash import BashRunner
             self.runner = BashRunner(**qtask.config.get_prefix('qtask.runner.bash', replace=True))
         else:
-            raise RuntimeError("Unknown runner: %s (valid: sge, pbs, bash)" % qtask.config.get('qtask.runner'))
+            raise RuntimeError("Unknown runner: %s (valid: sge, pbs, bash)" % qtask.config['qtask.runner'])
+
+    @property
+    def sample(self):
+        return self._sample
+
+    @sample.setter    
+    def sample(self, val):
+        qtask.log.info('CURRENT_SAMPLE: %s', val)
+
+        self._sample = val
 
     @property
     def pipeline_id(self):
         return self._pipeline_id
 
+    @property
+    def required(self):
+        reqs = set()
+        for t in self.tasks:
+            for req in t.option('requires').split(','):
+                if req:
+                    reqs.add(req)
+
+        return list(reqs)
+
     def _reset(self):
-        self.project = ''
-        self.sample = ''
+        self._sample = ''
         self.tasks = []
         self.global_depends = []
-        self._run_num ++ 1
+        self._run_num += 1
         self.run_code = '%s.%s' % (self.pipeline_id, self._run_num)
+        if qtask.config['qtask.holding']:
+            hold_job = qtask.QTask('/bin/true', hold=True, mem='10M', walltime='00:00:10', taskname='hold')
+            self.add_task(hold_job)
+            self.global_depends.append(hold_job)
 
     def add_global_depend(self, *depids):
         # These should be jobid's from the scheduler
         for depid in depids:
             self.global_depends.append(direct_task_wrapper(depid))
-
-    @property
-    def monitor(self):
-        return qtask.config.get('qtask.monitor')
 
     # @monitor.setter
     # def monitor(self, val):
@@ -112,10 +133,13 @@ class Pipeline(object):
                         continue
 
                     jobid, src = self.runner.qsub(task, monitor=qtask.config['monitor'], dryrun=dryrun)
+                    qtask.log.info('JOBID: %s', jobid)
+                    qtask.log.debug('JOB_SCRIPT: %s', src)
                     task._jobid = jobid
-                    sys.stderr.write('%s\n' % jobid)
+                    sys.stderr.write('%s' % jobid)
                     if verbose:
-                        sys.stderr.write('-[%s - %s (%s)]---------------\n' % (jobid, task.fullname, ','.join([d._jobid for d in task.depends_on])))
+                        sys.stderr.write(' - %s (%s)' % (task.fullname, ','.join([d._jobid for d in task.depends_on])))
+                    sys.stderr.write('\n')
 
                     if mon and not dryrun:
                         mon.submit(jobid, task.taskname, deps=[x._jobid for x in task.depends_on], src=src, project=self.project, sample=self.sample, run_code=self.run_code)
