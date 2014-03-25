@@ -5,6 +5,27 @@ import string
 import qtask
 import qtask.runner
 
+accounting_script = '''\
+#!/bin/bash
+#$ -w e
+#$ -terse
+#$ -accounting_%s
+#$ -hold_jid %s
+#$ -o /dev/null
+#$ -e /dev/null
+#$ -l h_rt=00:10:00
+#$ -l h_vmem=100M
+
+JID="%s"
+qacct -j $JID | tail -n+2 > .tmp.acct.$JID
+while read -r line; do 
+    KEY=$(echo $line | cut -f1 -d ' ')
+    VALUE=$(echo $line | cut -f2- -d ' ' | sed -e 's/^ \+//')
+    %s account "$JID" "$KEY" "$VALUE"
+done < .tmp.acct.$JID
+rm .tmp.acct.$JID
+
+'''
 
 class SGE(qtask.runner.JobRunner):
     def __init__(self, parallelenv='shm', account=None, tmpdir='/tmp', *args, **kwargs):
@@ -142,7 +163,6 @@ class SGE(qtask.runner.JobRunner):
         src += '  done\n'
         src += 'fi'
 
-
         if not dryrun:
             proc = subprocess.Popen(["qsub", ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output = proc.communicate(src)[0]
@@ -151,8 +171,19 @@ class SGE(qtask.runner.JobRunner):
             if retval != 0:
                 sys.stderr.write('Error submitting job %s: %s\n' % (task.name, output))
                 raise RuntimeError(output)
-            
-            return output.strip(), src
+
+            jobid = output.strip()
+
+            if jobid and monitor:
+                acct_src = accounting_script % (jobid, jobid, jobid, qtask.QTASK_MON)
+                proc = subprocess.Popen(["qsub", ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                output = proc.communicate(acct_src)[0]
+                retval = proc.wait()
+                if retval != 0:
+                    sys.stderr.write('Error submitting accounting job for %s: %s\n' % (jobid, output))
+                    raise RuntimeError(output)
+
+            return jobid, src
 
         jobid = str(self.dry_run_cur_jobid)
         self.dry_run_cur_jobid += 1
