@@ -9,7 +9,7 @@ accounting_script = '''\
 #!/bin/bash
 #$ -w e
 #$ -terse
-#$ -accounting_%s
+#$ -N accounting_%s
 #$ -hold_jid %s
 #$ -o /dev/null
 #$ -e /dev/null
@@ -21,7 +21,7 @@ qacct -j $JID | tail -n+2 > .tmp.acct.$JID
 while read -r line; do 
     KEY=$(echo $line | cut -f1 -d ' ')
     VALUE=$(echo $line | cut -f2- -d ' ' | sed -e 's/^ \+//')
-    %s account "$JID" "$KEY" "$VALUE"
+    %s account "%s.$JID" "$KEY" "$VALUE"
 done < .tmp.acct.$JID
 rm .tmp.acct.$JID
 '''
@@ -112,7 +112,7 @@ class SGE(qtask.runner.JobRunner):
         src += '  kill_deps\n'
 
         if monitor:
-            src += '  "%s" "%s" abort %s.$JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor, cluster)
+            src += '  "%s" "%s" abort "%s.$JOB_ID" "$1"\n' % (qtask.QTASK_MON, monitor, cluster)
 
         src += '}\n'
 
@@ -126,11 +126,11 @@ class SGE(qtask.runner.JobRunner):
         src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.cmd
 
         if monitor:
-            src += '"%s" "%s" start %s.$JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor, cluster)
+            src += '"%s" "%s" start "%s.$JOB_ID" $HOSTNAME\n' % (qtask.QTASK_MON, monitor, cluster)
             src += 'func 2>"$TMPDIR/$JOB_ID.qtask.stderr" >"$TMPDIR/$JOB_ID.qtask.stdout"\n'
             src += 'RETVAL=$?\n'
             src += 'if [ "$FAILED" == "" ]; then\n'
-            src += '  "%s" "%s" stop %s.$JOB_ID $RETVAL "$TMPDIR/$JOB_ID.qtask.stdout" "$TMPDIR/$JOB_ID.qtask.stderr"\n' % (qtask.QTASK_MON, monitor, cluster)
+            src += '  "%s" "%s" stop "%s.$JOB_ID" $RETVAL "$TMPDIR/$JOB_ID.qtask.stdout" "$TMPDIR/$JOB_ID.qtask.stderr"\n' % (qtask.QTASK_MON, monitor, cluster)
             
             if task.option('stdout'):
                 src += '  mv "$TMPDIR/$JOB_ID.qtask.stdout" "%s"\n' % task.option('stdout')
@@ -149,7 +149,7 @@ class SGE(qtask.runner.JobRunner):
         src += '  if [ $RETVAL -ne 0 ]; then\n'
         src += '    kill_deps\n'
         if monitor:
-            src += '    "%s" "%s" failed %s.$JOB_ID\n' % (qtask.QTASK_MON, monitor, cluster)
+            src += '    "%s" "%s" failed "%s.$JOB_ID"\n' % (qtask.QTASK_MON, monitor, cluster)
         src += '  fi\n'
 
         src += '  exit $RETVAL\n'
@@ -174,7 +174,7 @@ class SGE(qtask.runner.JobRunner):
             jobid = output.strip()
 
             if jobid and monitor:
-                acct_src = accounting_script % (jobid, jobid, jobid, qtask.QTASK_MON)
+                acct_src = accounting_script % (jobid, jobid, jobid, qtask.QTASK_MON, cluster)
                 proc = subprocess.Popen(["qsub", ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 output = proc.communicate(acct_src)[0]
                 retval = proc.wait()
