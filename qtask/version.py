@@ -26,14 +26,14 @@ def find_version(prog):
 
     return _program_version_cache[prog]
 
-# __path_cache = set()
-# def check_path(prog):
-#     if prog in __path_cache:
-#         return True
+__path_cache = set()
+def check_path(prog):
+    if prog in __path_cache:
+        return True
 
-#     with open('/dev/null', 'w') as devnull:
-#         if subprocess.call("which %s" % prog, stderr=devnull, stdout=devnull, shell=True) != 0:
-#             raise RuntimeError("Missing required program from $PATH: %s\n\n" % prog)
+    with open('/dev/null', 'w') as devnull:
+        if subprocess.call("which %s" % prog, stderr=devnull, stdout=devnull, shell=True) != 0:
+            raise RuntimeError("Missing required program from $PATH: %s\n\n" % prog)
 
-#     __path_cache.add(prog)
-#     return True
+    __path_cache.add(prog)
+    return True

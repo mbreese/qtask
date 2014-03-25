@@ -15,7 +15,7 @@ class SGE(qtask.runner.JobRunner):
         qtask.runner.JobRunner.__init__(self, *args, **kwargs)
 
 
-    def qsub(self, task, monitor, dryrun=False):
+    def qsub(self, task, monitor, cluster, dryrun=False):
         src = '#!/bin/bash\n'
         src += '#$ -w e\n'
         src += '#$ -terse\n'
@@ -92,7 +92,7 @@ class SGE(qtask.runner.JobRunner):
         src += '  kill_deps\n'
 
         if monitor:
-            src += '  "%s" "%s" signal $JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor)
+            src += '  "%s" "%s" abort %s.$JOB_ID "$1"\n' % (qtask.QTASK_MON, monitor, cluster)
 
         src += '}\n'
 
@@ -106,11 +106,11 @@ class SGE(qtask.runner.JobRunner):
         src += 'set -o pipefail\nfunc () {\n  %s\n  return $?\n}\n' % task.cmd
 
         if monitor:
-            src += '"%s" "%s" start $JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor)
+            src += '"%s" "%s" start %s.$JOB_ID $HOSTNAME\n' % (qtask.QTASK_MON, monitor, cluster)
             src += 'func 2>"$TMPDIR/$JOB_ID.qtask.stderr" >"$TMPDIR/$JOB_ID.qtask.stdout"\n'
             src += 'RETVAL=$?\n'
             src += 'if [ "$FAILED" == "" ]; then\n'
-            src += '  "%s" "%s" stop $JOB_ID $RETVAL "$TMPDIR/$JOB_ID.qtask.stdout" "$TMPDIR/$JOB_ID.qtask.stderr"\n' % (qtask.QTASK_MON, monitor)
+            src += '  "%s" "%s" stop %s.$JOB_ID $RETVAL "$TMPDIR/$JOB_ID.qtask.stdout" "$TMPDIR/$JOB_ID.qtask.stderr"\n' % (qtask.QTASK_MON, monitor, cluster)
             
             if task.option('stdout'):
                 src += '  mv "$TMPDIR/$JOB_ID.qtask.stdout" "%s"\n' % task.option('stdout')
@@ -129,7 +129,7 @@ class SGE(qtask.runner.JobRunner):
         src += '  if [ $RETVAL -ne 0 ]; then\n'
         src += '    kill_deps\n'
         if monitor:
-            src += '    "%s" "%s" killdeps $JOB_ID\n' % (qtask.QTASK_MON, monitor)
+            src += '    "%s" "%s" failed %s.$JOB_ID\n' % (qtask.QTASK_MON, monitor, cluster)
         src += '  fi\n'
 
         src += '  exit $RETVAL\n'

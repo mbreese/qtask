@@ -25,7 +25,7 @@ class QTaskProperties(dict):
         for k in self:
             qtask.log.debug('config: %s = %s', k, self[k])
 
-    def set(self, k, val, overwrite=False):
+    def set(self, k, val, overwrite=True):
         if not self._writeable:
             raise RuntimeError("Configuration locked!")
 

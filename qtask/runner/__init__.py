@@ -11,7 +11,7 @@ class JobRunner(object):
     def qrls(self, *jobid):
         raise NotImplementedError
 
-    def qsub(self, task, monitor, dryrun=False):
+    def qsub(self, task, monitor, cluster, dryrun=False):
         'return a tuple: (jobid, script_src)'
         raise NotImplementedError
 

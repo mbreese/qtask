@@ -110,9 +110,11 @@ class Pipeline(object):
 
     def submit(self, verbose=False, dryrun=False):
         mon = None
-        if not dryrun and qtask.config['monitor']:
-            mon = qtask.monitor.load_monitor(qtask.config['monitor'])
-            qtask.check_path(qtask.QTASK_MON)
+        if not dryrun and qtask.config['qtask.monitor']:
+            mon = qtask.monitor.load_monitor(qtask.config['qtask.monitor'])
+            qtask.log.debug("MONITOR: %s", qtask.config['qtask.monitor'])
+            qtask.version.check_path(qtask.QTASK_MON)
+            mon.start_run(self.run_code, self.project, self.sample, qtask.config['qtask.cluster'])
 
         try:
             submitted = True
@@ -132,20 +134,22 @@ class Pipeline(object):
                     if not deps_satisfied:
                         continue
 
-                    jobid, src = self.runner.qsub(task, monitor=qtask.config['monitor'], dryrun=dryrun)
+                    jobid, src = self.runner.qsub(task, cluster=qtask.config['qtask.cluster'], monitor=qtask.config['qtask.monitor'], dryrun=dryrun)
+
                     qtask.log.info('JOBID: %s', jobid)
                     qtask.log.debug('JOB_SCRIPT: %s', src)
+
                     task._jobid = jobid
+                    task._cluster = qtask.config['qtask.cluster']
+
                     sys.stderr.write('%s' % jobid)
                     if verbose:
                         sys.stderr.write(' - %s (%s)' % (task.fullname, ','.join([d._jobid for d in task.depends_on])))
                     sys.stderr.write('\n')
 
                     if mon and not dryrun:
-                        mon.submit(jobid, task.taskname, deps=[x._jobid for x in task.depends_on], src=src, project=self.project, sample=self.sample, run_code=self.run_code)
-                        for opt in task._options:
-                            mon.add_job_option(jobid, opt, task._options[opt])
-            
+                        mon.submit_job(task, self.run_code, src)
+
             self.runner.done()
             if mon:
                 mon.close()
@@ -168,7 +172,7 @@ class Pipeline(object):
             if not task.skip and task._jobid:
                 self.runner.qdel(task._jobid)
                 if monitor:
-                    monitor.abort(task._jobid, 'submit', '0')
+                    monitor.abort(task.cluster_jobid, by='submit_error')
 
         if monitor:
             monitor.close()

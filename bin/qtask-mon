@@ -6,7 +6,8 @@ Sends job results to a particular monitoring database/file. Supported types are:
 text file, sqlite database, or an external webapp (URL). This is handled outside
 of the pipeline job submission so that each pipeline (or set of jobs) can have
 different monitoring outputs. For example, you may wish to track jobs submitted
-with mqsub, but not with the jobs that you use for a full sequencing pipeline.
+with mqsub in a local SQLite database, but you may want to track a full pipeline
+with a remote web-based method.
 '''
 
 import sys
@@ -17,30 +18,21 @@ if os.path.exists(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'
 
 import qtask.monitor
 
-
 def usage():
     print __doc__
-    print """Usage: qtask-mon monitor-uri [submit|start|stop|stdout|stderr|abort] jobid {values}
+    print """Usage: qtask-mon monitor-uri [start|stop|abort|failed] jobid {values}
 
 Possible monitor URI formats:
     file://filename.txt
     sqlite://sqlite.db
     http://hostname/qtask-mon
 
-Values for "submit":
-    job_name
-
-Values for "start":
+Extra values for "start":
     hostname
 
-Values for "stop":
-    return_code
+Extra values for "stop":
+    return_code stdout_path stderr_path
 
-Values for "stdout" or "stderr":
-    filename
-
-Values for "abort":
-    aborted_by (job id)
 
 """
     sys.exit(1)
@@ -81,14 +73,10 @@ if __name__ == '__main__':
             mon.start(jobid, *extra)
         elif cmd == 'stop':
             mon.stop(jobid, *extra)
-        elif cmd == 'stdout':
-            mon.stdout(jobid, *extra)
-        elif cmd == 'stderr':
-            mon.stderr(jobid, *extra)
-        elif cmd == 'killdeps':
-            mon.killdeps(jobid, *extra)
-        elif cmd == 'signal':
-            mon.signal(jobid, *extra)
+        elif cmd == 'abort':
+            mon.abort(jobid)
+        elif cmd == 'failed':
+            mon.abort(jobid)
         else:
             sys.stderr.write('Unknown command: %s!\n\n' % cmd)
 

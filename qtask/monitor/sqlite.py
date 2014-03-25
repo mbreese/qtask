@@ -17,44 +17,56 @@ def _ts_to_datetime(ts):
 class SqliteMonitor(qtask.monitor.Monitor):
     def __init__(self, path):
         self.path = path
-        self.lock = qtask.monitor.Lock(self.path)
         self.conn = None
+        self.lock = qtask.monitor.Lock(self.path)
 
         if not os.path.exists(self.path):
+            self.lock.acquire()
             conn = sqlite3.connect(self.path)
-            conn.execute('''
-CREATE TABLE jobs (
-    jobid TEXT,
+            conn.executescript('''
+CREATE TABLE runs (
+    runcode TEXT,
     project TEXT,
     sample TEXT,
-    run TEXT,
+    cluster TEXT
+);
+
+CREATE TABLE jobs (
+    jobid TEXT,
+    runcode INTEGER,
     name TEXT,
-    procs INTEGER,
-    hostname TEXT,
+    cmd TEXT,
+    exechost TEXT,
     retcode INTEGER,
     submit_time INTEGER,
     start_time INTEGER,
     stop_time INTEGER,
     abort_time INTEGER,
     abort_code INTEGER,
-    aborted_by TEXT,
-    src BLOB,
-    stdout BLOB,
-    stderr BLOB
+    aborted_by TEXT
 );
-''')
-            conn.execute('''
+CREATE TABLE job_resources (
+    jobid INTEGER,
+    key TEXT,
+    value TEXT
+);
+CREATE TABLE job_output (
+    jobid INTEGER,
+    script TEXT,
+    stdout TEXT,
+    stderr TEXT
+);
 CREATE TABLE job_deps (
-    jobid TEXT,
-    parentid TEXT
+    jobid INTEGER,
+    parentid INTEGER
 );
 ''')
             conn.commit()
             conn.close()
+            self.lock.release()
 
     def connect(self):
         if not self.conn:
-            self.lock.acquire()
             self.conn = sqlite3.connect(self.path)
 
     def close(self):
@@ -64,8 +76,14 @@ CREATE TABLE job_deps (
 
     def execute(self, sql, args=None):
         self.connect()
-        self.conn.execute(sql, args)
+        cur = self.conn.cursor()
+        rowid = None
+        cur.execute(sql, args)
+        if sql.upper()[:7] == 'INSERT':
+            rowid = cur.last_insert_rowid()
+        cur.close()
         self.conn.commit()
+        return rowid
 
     def query(self, sql, args=None):
         self.connect()
@@ -76,51 +94,65 @@ CREATE TABLE job_deps (
             yield row
         cur.close()
 
-    def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None, run=None):
-        self.execute('INSERT INTO jobs (jobid, project, sample, run, name, procs, submit_time, src, abort_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)', (jobid, project, sample, run, jobname, procs, _now_ts(), src))
-        for d in deps:
-            self.execute('INSERT INTO job_deps (jobid, parentid) VALUES (?,?)', (jobid, d))
+    def start_run(self, runcode, project, sample, cluster):
+        rowid = self.execute('INSERT INTO runs(runcode, project, sample, cluster) VALUES (?,?,?,?)', (runcode, project, sample, cluster))
+        return rowid
 
-    def start(self, jobid, hostname=None):
-        self.execute('UPDATE jobs SET hostname = ?, start_time = ? WHERE jobid = ?', (hostname, _now_ts(), jobid))
+    def submit_job(self, job, runcode, src):
+        self.execute('INSERT INTO jobs (jobid, runcode, name, cmd, submit_time, abort_code) VALUES (?,?,?,?,?,0)', (job.cluster_jobid, runcode, job.taskname, job.cmd, _now_ts()))
+
+        for d in job.depends_on:
+            self.execute('INSERT INTO job_deps (jobid, parentid) VALUES (?, ?)', (job.cluster_jobid, d.cluster_jobid))
+
+        # for k in ['mem', 'procs', 'walltime', 'hold', 'mail', 'queue', 'qos', 'wd', 'stdout', 'stderr', 'env', 'account']:
+        for k in job._options:
+            if job.option(k):
+                self.execute('INSERT INTO job_resources (jobid, key, value) VALUES (?, ?, ?)', (job.cluster_jobid, k, job.option(k)))
+
+        self.execute('INSERT INTO job_output (jobid, script) VALUES (?, ?)', (job.cluster_jobid, src))
+
+    def start(self, jobid, hostname):
+        self.execute('UPDATE jobs SET exechost = ?, start_time = ? WHERE jobid = ?', (hostname, _now_ts(), jobid))
 
     def stop(self, jobid, retcode, stdout=None, stderr=None):
         self.execute('UPDATE jobs SET retcode = ?, stop_time = ? WHERE jobid = ?', (retcode, _now_ts(), jobid))
 
-        if stdout:
-            self.stdout(jobid, stdout)
+        if stdout or stderr:
+            if stdout:
+                self._load_output(jobid, 'stdout', stdout)
 
-        if stderr:
-            self.stderr(jobid, stderr)
+            if stderr:
+                self._load_output(jobid, 'stdout', stderr)
 
-    def stdout(self, jobid, stdout):
-        stdout_s = ''
-        if stdout and os.path.exists(stdout):
-            with open(stdout) as f:
-                stdout_s = f.read()
+    def _load_output(self, jobid, output_type, filename):
+        src = ''
+        if os.path.exists(filename):
+            with open(filename) as f:
+                if output_type == 'stderr':
+                    src = re.sub('(.*)\r(.*?)\r','\\2',f.read())
+                else:
+                    src = f.read()
 
-        self.execute('UPDATE jobs SET stdout = ? WHERE jobid = ?', (stdout_s, jobid))
+            self.execute('UPDATE job_output SET %s = ? WHERE jobid = ?' % output_type, (src, jobid))
 
-    def stderr(self, jobid, stderr, conn=None):
-        stderr_s = ''
-        if stderr and os.path.exists(stderr):
-            with open(stderr) as f:
-                # the regex removes any progress bars
-                stderr_s = re.sub('(.*)\r(.*?)\r','\\2',f.read())
 
-        self.execute('UPDATE jobs SET stderr = ? WHERE jobid = ?', (stderr_s, jobid))
+    def abort(self, jobid, by=None):
+        if by:
+            self.execute('UPDATE jobs SET abort_code = ?, aborted_by = ?, abort_time = ? WHERE jobid = ?', (2, by, _now_ts(), jobid))
+        else:
+            self.execute('UPDATE jobs SET abort_code = ?, aborted_by = ?, abort_time = ? WHERE jobid = ?', (2, jobid, _now_ts(), jobid))
+        self._killdeps(jobid)
 
-    def signal(self, jobid, sig):
-        self.abort(jobid, sig, 2)
-        self.killdeps(jobid)
+    def failed(self, jobid):
+        self._killdeps(jobid)
 
-    def killdeps(self, jobid):
+    def _killdeps(self, jobid):
         children = set()
         for cid in self._find_children(jobid):
             children.add(cid)
 
         for cid in children:
-            self.abort(cid, jobid, 1)
+            self.execute('UPDATE jobs SET abort_code = ?, aborted_by = ?, abort_time = ? WHERE jobid = ?', (1, jobid, _now_ts(), cid))
 
     def _find_children(self, jobid):
         for row in self.query('SELECT jobid FROM job_deps WHERE parentid = ?', (jobid, )):
@@ -129,14 +161,3 @@ CREATE TABLE job_deps (
                 yield cid
             yield childid
 
-    def abort(self, jobid, reason, code):
-        '''
-        codes:
-            0 - error during submission
-            1 - error with parent
-            2 - got killed by SGE/job scheduler
-        '''
-        self.execute('UPDATE jobs SET abort_code = ?, aborted_by = ?, abort_time = ? WHERE jobid = ?', (code, reason, _now_ts(), jobid))
-
-    def find(self, project=None, sample=None, jobname=None, jobid=None):
-        raise NotImplementedError

@@ -27,9 +27,9 @@ Note: These values are all job-scheduler dependent
 '''
     def __init__(self, cmd=None, depends_on=None, taskname=None, basename=None, output=None, **kwargs):
         self._jobid = None
+        self._cluster = None
 
         self.depends_on = depends_on if depends_on else []
-        self.children = []
         self.cmd = cmd if cmd else ''
         self.output = output
         self.taskname = taskname
@@ -52,6 +52,10 @@ Note: These values are all job-scheduler dependent
     @property
     def skip(self):
         return self._skip
+
+    @property
+    def cluster_jobid(self):
+        return '%s.%s' % (self._cluster, self._jobid)
 
     @property
     def fullname(self):
@@ -247,9 +251,10 @@ class task(object):
 import qtask.properties
 config = qtask.properties.QTaskProperties(initial={
     'qtask.log': './run.log',
+    'qtask.cluster': 'local',
+    'qtask.holding': True,
+    'qtask.monitor': None,
     'qtask.runner': 'bash', 
-    'qtask.monitor': None, 
-    'qtask.holding': True
     })
 
 import qtask.runlog

@@ -16,7 +16,7 @@ class BashRunner(qtask.runner.JobRunner):
 
         self.uniq = '%s_%s' % (datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f'), os.getpid())
 
-    def qsub(self, task, monitor, dryrun=False):
+    def qsub(self, task, monitor, cluster, dryrun=False):
         jobid = 'job_%s_%s' % (self._jobid, self.uniq)
         if monitor:
             self.script += 'func_%s () {\n%s\nreturn $?\n}\n' % (jobid, task.cmd)

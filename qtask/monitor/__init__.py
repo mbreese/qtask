@@ -57,21 +57,17 @@ class Monitor(object):
         pass
     def close(self):
         pass
-    def submit(self, jobid, jobname, src, procs=1, deps=[], project=None, sample=None, run=None):
+    def start_run(self, runcode, project, sample, cluster):
         raise NotImplementedError
-    def start(self, jobid, hostname=None):
+    def submit_job(self, job, runcode, src):
         raise NotImplementedError
-    def stop(self, jobid, return_code, stdout=None, stderr=None):
+    def start(self, jobid, hostname):
         raise NotImplementedError
-    def stdout(self, jobid, filename):
+    def stop(self, jobid, retcode, stdout=None, stderr=None):
         raise NotImplementedError
-    def stderr(self, jobid, filename):
+    def abort(self, jobid, by=None):
         raise NotImplementedError
-    def killdeps(self, jobid):
-        raise NotImplementedError
-    def signal(self, jobid, signal):
-        raise NotImplementedError
-    def find(self, project=None, sample=None, jobname=None, jobid=None):
+    def failed(self, jobid):
         raise NotImplementedError
 
 
