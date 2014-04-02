@@ -136,6 +136,8 @@ class SGE(qtask.JobRunner):
 
             if retval != 0:
                 sys.stderr.write('Error submitting job %s: %s\n' % (task.name, output))
+                sys.stderr.write(src)
+                sys.stderr.write('\n')
                 raise RuntimeError(output)
             
             return output.strip(), src
