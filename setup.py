@@ -8,6 +8,6 @@ setup(name='qtask',
       author='Marcus Breese',
       author_email='marcus@breese.com',
       url='http://github.com/mbreese/qtask/',
-      packages=['qtask', 'qtask.monitor'],
+      packages=['qtask', 'qtask.monitor', 'qtask.runner'],
       scripts=['bin/mqsub', 'bin/mqdel', 'bin/qtask-mon']
      )
