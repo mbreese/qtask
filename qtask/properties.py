@@ -37,8 +37,11 @@ class QTaskProperties(dict):
             raise RuntimeError("Configuration locked!")
         if os.path.exists(path):
             for line in open(path):
-                k,v = line.strip().split('=')
-                self[k.lower().strip()] = _config_value(v.strip())
+                if '=' in line:
+                    k,v = line.strip().split('=')
+                    self[k.lower().strip()] = _config_value(v.strip())
+                else:
+                    self[line.strip().lower()] = True
 
     def load_env(self):
         if not self._writeable:
