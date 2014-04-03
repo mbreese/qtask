@@ -108,7 +108,7 @@ class Pipeline(object):
         self.tasks.append(task)
 
 
-    def submit(self, verbose=False, dryrun=False):
+    def submit(self, verbose=False, dryrun=False, show_src=False):
         mon = None
         if not dryrun and qtask.config['qtask.monitor']:
             mon = qtask.monitor.load_monitor(qtask.config['qtask.monitor'])
@@ -157,6 +157,11 @@ class Pipeline(object):
                             deps.extend(task.option('depends').split(','))
                         sys.stderr.write(' - %s (%s)' % (task.fullname, ','.join(deps)))
                     sys.stderr.write('\n')
+
+                    if show_src:
+                        sys.stderr.write(src)
+                        sys.stderr.write('\n')
+
 
                     if mon and not dryrun:
                         mon.submit_job(task, self.run_code, src)

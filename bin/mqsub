@@ -80,9 +80,10 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False, deps=[]):
         else:
             jobname = '%s' % (cmd_ar[0].replace('/','_'))
 
-        task = qtask.QTask(src=' '.join(cmd_ar), jobname=jobname, **resources)
+        task = qtask.QTask(' '.join(cmd_ar), jobname=jobname, **resources)
         task.depends_on.extend([direct_task_wrapper(dep) for dep in deps])                
-        qtask.pipeline.add_task(task)
+        
+        qtask._get_pipeline().add_task(task)
 
 
     else:
@@ -106,15 +107,15 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False, deps=[]):
                     job_resources[k] = val
 
 
-            task = qtask.QTask(src=' '.join(cmd_repl), jobname=jobname, **job_resources)
+            task = qtask.QTask(' '.join(cmd_repl), jobname=jobname, **job_resources)
             task.depends_on.extend([direct_task_wrapper(dep) for dep in deps])                
 
             if 'sample' in resources:
                 qtask.pipeline.sample = _var_repl(resources['sample'], fname)
 
-            qtask.pipeline.add_task(task)
+            qtask._get_pipeline().add_task(task)
 
-    qtask.pipeline.submit(verbose=verbose, dryrun=dryrun)
+    qtask.submit(verbose=verbose, dryrun=dryrun, show_src=verbose)
 
 
 if __name__ == '__main__':
@@ -169,5 +170,7 @@ if __name__ == '__main__':
 
     if not cmd_ar:
         usage()
+
+    qtask.config['qtask.holding'] = False
 
     submit(cmd_ar, infiles, resources, verbose, dryrun, deps)
