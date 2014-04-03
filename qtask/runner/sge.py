@@ -69,7 +69,10 @@ class SGE(qtask.runner.JobRunner):
                 src += '#$ -l h_vmem=%s\n' % task.option('mem')
 
         if task.depends_on:
-            depids = [t._jobid for t in task.depends_on]
+            depids = []
+            for t in task.depends_on:
+                if t._jobid:
+                    depids.append(t._jobid)
             if task.option('depends'):
                 depids.extend(task.option('depends').split(','))
 

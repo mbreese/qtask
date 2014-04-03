@@ -134,6 +134,11 @@ class Pipeline(object):
                     if not deps_satisfied:
                         continue
 
+                    qtask.log.debug('SUBMITING: %s', task.fullname)
+                    for opt in task._options:
+                        qtask.log.trace('TASK OPTION: %s => %s', opt, task.option(opt))
+                    qtask.log.trace('TASK OPTION: cmd => %s', task.cmd)
+
                     jobid, src = self.runner.qsub(task, cluster=qtask.config['qtask.cluster'], monitor=qtask.config['qtask.monitor'], dryrun=dryrun)
 
                     qtask.log.info('JOBID: %s', jobid)
@@ -144,7 +149,13 @@ class Pipeline(object):
 
                     sys.stderr.write('%s' % jobid)
                     if verbose:
-                        sys.stderr.write(' - %s (%s)' % (task.fullname, ','.join([d._jobid for d in task.depends_on])))
+                        deps = []
+                        for d in task.depends_on:
+                            if d._jobid:
+                                deps.append(d._jobid)
+                        if task.option('depends'):
+                            deps.extend(task.option('depends').split(','))
+                        sys.stderr.write(' - %s (%s)' % (task.fullname, ','.join(deps)))
                     sys.stderr.write('\n')
 
                     if mon and not dryrun:
