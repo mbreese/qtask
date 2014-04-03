@@ -68,7 +68,7 @@ class Pipeline(object):
         self._run_num += 1
         self.run_code = '%s.%s' % (self.pipeline_id, self._run_num)
         if qtask.config['qtask.holding']:
-            hold_job = qtask.QTask('/bin/true', hold=True, mem='10M', walltime='00:00:10', taskname='hold')
+            hold_job = qtask.QTask('/bin/true', hold=True, mem='10M', walltime='00:00:10', jobname='hold')
             self.add_task(hold_job)
             self.global_depends.append(hold_job)
 

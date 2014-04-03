@@ -69,6 +69,8 @@ class Monitor(object):
         raise NotImplementedError
     def failed(self, jobid):
         raise NotImplementedError
+    def accounting_value(self, jobid, k, val):
+        raise NotImplementedError
 
 
 class TextMonitor(Monitor):

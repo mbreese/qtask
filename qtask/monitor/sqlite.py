@@ -50,6 +50,11 @@ CREATE TABLE job_resources (
     key TEXT,
     value TEXT
 );
+CREATE TABLE job_accounting (
+    jobid INTEGER,
+    key TEXT,
+    value TEXT
+);
 CREATE TABLE job_output (
     jobid INTEGER,
     script TEXT,
@@ -99,7 +104,7 @@ CREATE TABLE job_deps (
         return rowid
 
     def submit_job(self, job, runcode, src):
-        self.execute('INSERT INTO jobs (jobid, runcode, name, cmd, submit_time, abort_code) VALUES (?,?,?,?,?,0)', (job.cluster_jobid, runcode, job.taskname, job.cmd, _now_ts()))
+        self.execute('INSERT INTO jobs (jobid, runcode, name, cmd, submit_time, abort_code) VALUES (?,?,?,?,?,0)', (job.cluster_jobid, runcode, job.jobname, job.cmd, _now_ts()))
 
         for d in job.depends_on:
             self.execute('INSERT INTO job_deps (jobid, parentid) VALUES (?, ?)', (job.cluster_jobid, d.cluster_jobid))
@@ -110,6 +115,9 @@ CREATE TABLE job_deps (
                 self.execute('INSERT INTO job_resources (jobid, key, value) VALUES (?, ?, ?)', (job.cluster_jobid, k, job.option(k)))
 
         self.execute('INSERT INTO job_output (jobid, script) VALUES (?, ?)', (job.cluster_jobid, src))
+
+    def accounting_value(self, jobid, k, val):
+        self.execute('INSERT INTO job_accounting (jobid, key, value) VALUES (?,?,?)', (jobid, k, val))
 
     def start(self, jobid, hostname):
         self.execute('UPDATE jobs SET exechost = ?, start_time = ? WHERE jobid = ?', (hostname, _now_ts(), jobid))

@@ -1,7 +1,7 @@
 import sys
 import os
 import inspect
-
+import socket
 
 # QTASK_MON = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "bin", "qtask-mon"))
 QTASK_MON = "qtask-mon"  # rely on the $PATH
@@ -25,14 +25,14 @@ Valid job resource/arguments:
 
 Note: These values are all job-scheduler dependent
 '''
-    def __init__(self, cmd=None, depends_on=None, taskname=None, basename=None, output=None, **kwargs):
+    def __init__(self, cmd=None, depends_on=None, jobname=None, basename=None, output=None, **kwargs):
         self._jobid = None
         self._cluster = None
 
         self.depends_on = depends_on if depends_on else []
         self.cmd = cmd if cmd else ''
         self.output = output
-        self.taskname = taskname
+        self._jobname = jobname
         self.basename = basename
 
         if cmd:
@@ -59,7 +59,11 @@ Note: These values are all job-scheduler dependent
 
     @property
     def fullname(self):
-        return '%s.%s' % (self.basename if self.basename else 'qtask', self.taskname if self.taskname else 'unnamed-job')
+        return '%s.%s' % (self.basename if self.basename else 'qtask', self.jobname)
+
+    @property
+    def jobname(self):
+        return self._jobname if self._jobname else 'unnamed_job'
 
     def __nonzero__(self):
         return not self.skip
@@ -211,8 +215,8 @@ class task(object):
                     if k not in result:
                         result[k] = self.default_kwargs[k]
 
-                if not 'taskname' in result:
-                    result['taskname'] = func.__name__
+                if not 'jobname' in result:
+                    result['jobname'] = func.__name__
 
                 task = QTask(depends_on=deps, **result)
                 _get_pipeline().add_task(task)
@@ -251,7 +255,7 @@ class task(object):
 import qtask.properties
 config = qtask.properties.QTaskProperties(initial={
     'qtask.log': './run.log',
-    'qtask.cluster': 'local',
+    'qtask.cluster': socket.gethostname(),
     'qtask.holding': True,
     'qtask.monitor': None,
     'qtask.runner': 'bash', 

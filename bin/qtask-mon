@@ -20,7 +20,7 @@ import qtask.monitor
 
 def usage():
     print __doc__
-    print """Usage: qtask-mon monitor-uri [start|stop|abort|failed] jobid {values}
+    print """Usage: qtask-mon monitor-uri [start|stop|abort|failed|account] jobid {values}
 
 Possible monitor URI formats:
     file://filename.txt
@@ -32,6 +32,9 @@ Extra values for "start":
 
 Extra values for "stop":
     return_code stdout_path stderr_path
+
+Extra values for "account":
+    key value
 
 
 """
@@ -76,7 +79,9 @@ if __name__ == '__main__':
         elif cmd == 'abort':
             mon.abort(jobid)
         elif cmd == 'failed':
-            mon.abort(jobid)
+            mon.failed(jobid)
+        elif cmd == 'account':
+            mon.accounting_value(jobid, *extra)
         else:
             sys.stderr.write('Unknown command: %s!\n\n' % cmd)
 
