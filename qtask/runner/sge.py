@@ -20,9 +20,15 @@ JID="%s"
 qacct -j $JID | tail -n+2 > .tmp.acct.$JID
 while read -r line; do 
     KEY=$(echo $line | cut -f1 -d ' ')
-    VALUE=$(echo $line | cut -f2- -d ' ' | sed -e 's/^ \+//')
+    VALUE=$(echo $line | cut -f2- -d ' ' | sed -e 's/^ \+//' | sed -e 's/ \+$//')
     %s account "%s.$JID" "$KEY" "$VALUE"
 done < .tmp.acct.$JID
+
+CPU=$(grep '^cpu ' .tmp.acct.$JID | cut -f2- -d ' '| sed -e 's/^ \+//' | sed -e 's/ \+$//')
+WALLCLOCK=$(grep '^ru_wallclock ' .tmp.acct.$JID | cut -f2- -d ' '| sed -e 's/^ \+//' | sed -e 's/ \+$//')
+ACTIVITY=$(echo "scale=2; $CPU/$WALLCLOCK" | bc -q 2>/dev/null)
+%s account "%s.$JID" "activity" "$ACTIVITY"
+
 rm .tmp.acct.$JID
 '''
 
@@ -39,7 +45,7 @@ class SGE(qtask.runner.JobRunner):
         src = '#!/bin/bash\n'
         src += '#$ -w e\n'
         src += '#$ -terse\n'
-        src += '#$ -N %s\n' % (task.fullname if task.fullname[0] in string.ascii_letters else 'sgejob_%s' % task.fullname)
+        src += '#$ -N %s\n' % (task.fullname if task.fullname[0] in string.ascii_letters else 'qtask_%s' % task.fullname)
 
         if task.option('hold'):
             src += '#$ -h\n'
@@ -177,7 +183,7 @@ class SGE(qtask.runner.JobRunner):
             jobid = output.strip()
 
             if jobid and monitor:
-                acct_src = accounting_script % (jobid, jobid, jobid, qtask.QTASK_MON, cluster)
+                acct_src = accounting_script % (jobid, jobid, jobid, qtask.QTASK_MON, cluster, qtask.QTASK_MON, cluster)
                 proc = subprocess.Popen(["qsub", ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 output = proc.communicate(acct_src)[0]
                 retval = proc.wait()

@@ -80,7 +80,7 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False, deps=[]):
         else:
             jobname = '%s' % (cmd_ar[0].replace('/','_'))
 
-        task = qtask.QTask(src=' '.join(cmd_ar), taskname=jobname, **resources)
+        task = qtask.QTask(src=' '.join(cmd_ar), jobname=jobname, **resources)
         task.depends_on.extend([direct_task_wrapper(dep) for dep in deps])                
         qtask.pipeline.add_task(task)
 
@@ -106,7 +106,7 @@ def submit(cmd_ar, infiles, resources={}, verbose=False, dryrun=False, deps=[]):
                     job_resources[k] = val
 
 
-            task = qtask.QTask(src=' '.join(cmd_repl), taskname=jobname, **job_resources)
+            task = qtask.QTask(src=' '.join(cmd_repl), jobname=jobname, **job_resources)
             task.depends_on.extend([direct_task_wrapper(dep) for dep in deps])                
 
             if 'sample' in resources:
