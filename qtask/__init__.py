@@ -10,9 +10,10 @@ QTASK_MON = "qtask-mon"  # rely on the $PATH
 
 class QTask(object):
     '''\
-Valid job resource/arguments:
+Valid job resource/arguments (examples, not defaults):
     walltime    HH:MM:SS
     mem         3G
+    stack       10M
     himem       12G  (used if the pipeline is configured for high memory usage)
     holding     should this job be held until released by the user
     mail        [e,a,ea,n]

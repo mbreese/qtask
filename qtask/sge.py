@@ -32,6 +32,9 @@ class SGE(qtask.JobRunner):
         if 'mem' in task.resources:
             src += '#$ -l h_vmem=%s\n' % task.resources['mem']
 
+        if 'stack' in task.resources:
+            src += '#$ -l h_stack=%s\n' % task.resources['stack']
+
         if 'ppn' in task.resources:
             src += '#$ -pe %s %s\n' % (self.parallelenv, task.resources['ppn'])
 
